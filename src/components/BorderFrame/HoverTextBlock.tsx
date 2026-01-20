@@ -156,7 +156,7 @@ export const HoverTextBlock = forwardRef<HTMLDivElement, HoverTextBlockProps>(
   function HoverTextBlock({ position, content, zone, isJustPlaced = false, isDragging = false }, ref) {
     const isHorizontalZone = zone === 'top' || zone === 'bottom';
     const segments = parseContent(content);
-    const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+    const [copiedIdx, setCopiedIdx] = useState<number | undefined>(undefined);
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -167,9 +167,9 @@ export const HoverTextBlock = forwardRef<HTMLDivElement, HoverTextBlockProps>(
     }, []);
 
     useEffect(() => {
-      if (copiedIdx !== null) {
+      if (copiedIdx !== undefined) {
         const timer = setTimeout(() => {
-          setCopiedIdx(null);
+          setCopiedIdx(undefined);
         }, 1500);
         return () => clearTimeout(timer);
       }
