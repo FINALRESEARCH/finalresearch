@@ -78,6 +78,15 @@ function renderSegment(
     }
   };
 
+  const handleCallClick = (e: React.MouseEvent) => {
+    if (isJustPlaced) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (segment.url) {
+      window.location.href = segment.url;
+    }
+  };
+
   switch (segment.type) {
     case 'link':
       return (
@@ -99,7 +108,7 @@ function renderSegment(
         <a
           key={idx}
           href={segment.url}
-          onClick={handleLinkClick}
+          onClick={handleCallClick}
           className={`${!isDragging ? 'hover:opacity-70' : ''} transition-opacity ${
             isJustPlaced || isDragging ? 'pointer-events-none' : 'cursor-pointer'
           }`}

@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    resolveAlias: {
+      fs: { browser: './src/lib/emptyModule.js' },
+      path: { browser: './src/lib/emptyModule.js' },
+    },
+  },
   images: {
     remotePatterns: [
       {
