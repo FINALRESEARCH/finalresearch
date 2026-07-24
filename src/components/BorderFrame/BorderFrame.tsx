@@ -51,8 +51,8 @@ export function BorderFrame() {
 
   const isZonePlaced = useMemo(() => checkZonePlaced(activeZone, placedBlocks), [activeZone, placedBlocks]);
 
-  // Should show the floating text block (mouse down, has content, zone not already placed)
-  const showFloatingBlock = isMouseDown && activeZone && content && !isZonePlaced;
+  // Should show the floating text block (hovering a zone with content, zone not already placed)
+  const showFloatingBlock = activeZone && content && !isZonePlaced;
 
   useEffect(() => {
     const handleMouseDown = () => {
@@ -160,22 +160,22 @@ export function BorderFrame() {
         />
       ))}
 
-      {/* Cursor-following text block - only when mouse down and zone not placed */}
+      {/* Cursor-following text block - shown on hover, zone not already placed */}
       {showFloatingBlock && (
         <HoverTextBlock
           ref={textBlockRef}
           position={mousePosition}
           content={content}
           zone={activeZone}
-          isDragging={true}
+          isDragging={isMouseDown}
         />
       )}
 
       {/* Corner lines - draw to text block if zone not placed, or to cursor if placed */}
       <CornerLines
         textBlockRect={textBlockRect}
-        cursorPoint={isMouseDown && isZonePlaced ? mousePosition : null}
-        isVisible={!!activeZone && isMouseDown}
+        cursorPoint={isZonePlaced ? mousePosition : null}
+        isVisible={!!activeZone}
       />
     </div>
   );
