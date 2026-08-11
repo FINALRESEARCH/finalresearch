@@ -1,0 +1,533 @@
+/* Custom Sanity Studio Styles */
+
+/* Brand colors */
+:root {
+  --brand: #464861;
+  --brand-light: #61677A;
+  --brand-dark: #1E222E;
+  color-scheme: dark !important;
+}
+
+/* Text selection */
+::selection {
+  background-color: var(--brand-dark) !important;
+}
+
+*::selection {
+  background-color: var(--brand-dark) !important;
+}
+
+html,
+body,
+#sanity {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+}
+
+/* Apply Helvetica Neue globally */
+* {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+}
+
+/* Fixed font sizes - scaled down */
+html, body, #sanity {
+  font-size: 11px !important;
+}
+
+h1, [data-ui="Heading"][data-size="5"] {
+  font-size: 16px !important;
+}
+
+h2, [data-ui="Heading"][data-size="4"] {
+  font-size: 14px !important;
+}
+
+h3, [data-ui="Heading"][data-size="3"] {
+  font-size: 12px !important;
+}
+
+h4, h5, h6,
+[data-ui="Heading"][data-size="2"],
+[data-ui="Heading"][data-size="1"],
+[data-ui="Heading"][data-size="0"] {
+  font-size: 11px !important;
+}
+
+/* Chrome text — Sanity UI components and form controls only. Bare element
+   selectors (span/label/p/div/a) are intentionally omitted so editor/content
+   text can follow its own size instead of the compact 11px base. */
+[data-ui="Text"],
+[data-ui="Label"],
+[data-ui="MenuItem"],
+[data-ui="Tab"],
+button,
+input,
+select,
+textarea {
+  font-size: 11px !important;
+}
+
+/* Portable Text editor — real content size.
+   The 11px base above is for the Studio chrome; reset the editing surface to a
+   real reading size so body copy isn't shrunk. Relative sizes on block styles
+   (plaque, headings) scale from this. The toolbar stays compact — its controls
+   are Sanity [data-ui] components, sized by the rule above. */
+[data-testid="pt-editor"] {
+  font-size: 16px;
+}
+
+/* Smaller text variants */
+[data-ui="Text"][data-size="0"],
+[data-ui="Text"][data-size="1"],
+[data-ui="Label"][data-size="0"],
+[data-ui="Label"][data-size="1"] {
+  font-size: 9px !important;
+}
+
+/* Remove uppercase/small-caps styling, keep default Sanity font sizes */
+[data-ui="Text"],
+[data-ui="Label"],
+[data-ui="Card"],
+[data-ui="Box"],
+[data-ui="Stack"],
+[data-ui="Flex"],
+[data-ui="MenuButton"] span,
+[data-ui="MenuItem"] span,
+[data-ui="Tab"] span,
+nav span,
+button,
+span,
+label,
+p,
+div {
+  text-transform: none !important;
+  font-variant: normal !important;
+  font-feature-settings: normal !important;
+  letter-spacing: normal !important;
+}
+
+/* Hide Sanity logo in navbar */
+[data-testid="studio-logo"],
+[data-ui="NavDrawer"] svg[data-sanity-icon="sanity-logo"],
+a[href*="sanity.io"] svg,
+button svg[data-sanity-icon="sanity-logo"] {
+  display: none !important;
+}
+
+/* Hide the IP placeholder/initials logo */
+[data-testid="studio-logo"],
+[data-ui="Avatar"],
+[data-ui="Navbar"] > div:first-child a[href="/studio"],
+[data-ui="Navbar"] [data-testid="workspace-menu-button"] {
+  display: none !important;
+}
+
+/* Hide any "new project" or promo popups */
+[data-ui="Popover"][data-testid*="promo"],
+[data-ui="Dialog"][data-testid*="announcement"],
+[role="dialog"][aria-label*="What's new"],
+[data-ui="Toast"][data-testid*="announcement"] {
+  display: none !important;
+}
+
+/* Hide help/resources button that shows Sanity branding */
+button[aria-label="Resources"],
+[data-testid="resources-button"] {
+  display: none !important;
+}
+
+/* Remove the small "Sanity" branding link if present */
+a[href="https://www.sanity.io"],
+a[href*="sanity.io/docs"] {
+  display: none !important;
+}
+
+/* Drag handle icon */
+svg[data-sanity-icon="drag-handle"] {
+  color: var(--brand) !important;
+}
+
+svg[data-sanity-icon="drag-handle"]:hover {
+  color: var(--brand-light) !important;
+}
+
+/* Preserve status indicator dot colors */
+[data-status="published"] {
+  background-color: #3ab667 !important;
+}
+
+[data-status="draft"] {
+  background-color: #f5a623 !important;
+}
+
+[data-status="error"] {
+  background-color: #f03e2f !important;
+}
+
+/* Dark panel backgrounds - exclude status tones */
+[data-ui="Card"]:not([data-tone="positive"]):not([data-tone="caution"]):not([data-tone="critical"]):not([data-tone="transparent"]),
+[data-ui="Dialog"],
+[data-ui="Popover"],
+[data-ui="Menu"] {
+  background-color: #000000 !important;
+}
+
+/* Input fields - transparent background with brand border */
+[data-ui="TextInput"],
+[data-ui="TextArea"],
+[data-ui="Select"] {
+  background-color: transparent !important;
+  color: #ffffff !important;
+  border-color: var(--brand) !important;
+}
+
+/* Native inputs - prevent white flash on load */
+input,
+textarea,
+select {
+  background-color: transparent !important;
+  border-color: var(--brand) !important;
+}
+
+/* Focus states with brand color */
+[data-ui="TextInput"]:focus,
+[data-ui="TextArea"]:focus,
+[data-ui="Select"]:focus,
+button:focus {
+  outline-color: var(--brand) !important;
+  border-color: var(--brand) !important;
+}
+
+/* Brand color for selected/active states - project cards/rows */
+/* Exclude status indicators (published/draft/error) */
+[data-selected="true"]:not([data-tone="positive"]):not([data-tone="caution"]):not([data-tone="critical"]),
+[aria-selected="true"]:not([data-tone="positive"]):not([data-tone="caution"]):not([data-tone="critical"]),
+[data-active="true"]:not([data-tone="positive"]):not([data-tone="caution"]):not([data-tone="critical"]) {
+  background-color: var(--brand-dark) !important;
+  color:#ffffff !important;
+}
+
+/* Selected pane items and cards with primary tone */
+[data-ui="PaneItem"][data-selected],
+[data-ui="Card"][data-tone="primary"][data-selected],
+[data-ui="Card"][data-tone="primary"]:has([data-selected]),
+[data-ui="PaneItem"][data-tone="primary"],
+a[data-ui="PaneItem"][data-selected] {
+  background-color: var(--brand-dark) !important;
+  color: #ffffff !important;
+}
+
+/* Keep same color on hover for selected/active rows */
+[data-ui="PaneItem"][data-selected]:hover,
+[data-ui="Card"][data-tone="primary"][data-selected]:hover,
+[data-ui="Card"][data-tone="primary"]:has([data-selected]):hover,
+[data-ui="PaneItem"][data-tone="primary"]:hover,
+a[data-ui="PaneItem"][data-selected]:hover {
+  background-color: var(--brand-dark) !important;
+  color: #ffffff !important;
+}
+
+/* Links and interactive elements */
+a:not([data-ui]) {
+  color: var(--brand) !important;
+}
+
+/* Primary buttons */
+button[data-tone="primary"],
+[data-ui="Button"][data-tone="primary"] {
+  background-color: var(--brand) !important;
+  color: #ffffff !important;
+}
+
+button[data-tone="primary"]:hover,
+[data-ui="Button"][data-tone="primary"]:hover {
+  background-color: var(--brand-light) !important;
+  color: #ffffff !important;
+}
+
+/* Publish button */
+button[data-testid="action-publish"],
+[data-ui="Button"][data-testid="action-publish"] {
+  background-color: var(--brand) !important;
+  color: #ffffff !important;
+}
+
+button[data-testid="action-publish"]:hover,
+[data-ui="Button"][data-testid="action-publish"]:hover {
+  background-color: var(--brand-light) !important;
+  color: #ffffff !important;
+}
+
+/* Publish button disabled state */
+button[data-testid="action-publish"][data-disabled="true"],
+button[data-testid="action-publish"]:disabled,
+[data-ui="Button"][data-testid="action-publish"][data-disabled="true"],
+[data-ui="Button"][data-testid="action-publish"]:disabled {
+  background-color: #3a3a3a !important;
+  color: #666666 !important;
+  cursor: not-allowed !important;
+}
+
+button[data-testid="action-publish"][data-disabled="true"]:hover,
+button[data-testid="action-publish"]:disabled:hover,
+[data-ui="Button"][data-testid="action-publish"][data-disabled="true"]:hover,
+[data-ui="Button"][data-testid="action-publish"]:disabled:hover {
+  background-color: #3a3a3a !important;
+  color: #666666 !important;
+}
+
+/* Default/ghost buttons hover states */
+button[data-tone="default"]:hover,
+[data-ui="Button"][data-tone="default"]:hover,
+button:not([data-tone]):hover,
+[data-ui="Button"]:not([data-tone]):hover {
+  background-color: var(--brand) !important;
+  color: #ffffff !important;
+}
+
+/* Menu items hover */
+[data-ui="MenuItem"]:hover,
+[data-ui="MenuButton"]:hover {
+  background-color: var(--brand-dark) !important;
+  color: #ffffff !important;
+}
+
+/* Tab hover states */
+[data-ui="Tab"]:hover {
+  background-color: var(--brand-dark) !important;
+  color: #ffffff !important;
+}
+
+/* Card hover states - exclude status tones */
+[data-ui="Card"]:hover:not([data-as="button"]):not([data-tone="positive"]):not([data-tone="caution"]):not([data-tone="critical"]) {
+  border-color: var(--brand) !important;
+  color:#ffffff !important;
+}
+
+/* List item / document row hover - exclude status tones */
+[data-ui="Card"][data-as="button"]:hover:not([data-tone="positive"]):not([data-tone="caution"]):not([data-tone="critical"]) {
+  background-color: var(--brand-dark) !important;
+  color:#ffffff !important;
+}
+
+/* ============================================
+   Content Folder List Styling
+   ============================================ */
+
+/* Divider shows as 1px line */
+[role="listbox"] li:has(hr),
+[role="listbox"] li:has(.Divider-sc-j4cdg4-1) {
+  height: 1px !important;
+  min-height: 1px !important;
+  overflow: hidden !important;
+}
+
+/* PreviewCard items - add padding for spacing, remove border-radius */
+[data-ui="PreviewCard"] {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  padding: 4px 8px !important;
+  background-color: transparent !important;
+}
+
+/* Active/pressed/selected folder item - matches project panel selection style */
+/* data-pressed="" and data-selected="" (empty string) mean the attribute exists */
+[data-ui="PreviewCard"][data-pressed],
+[data-ui="PreviewCard"][data-selected],
+li[aria-selected="true"] [data-ui="PreviewCard"] {
+  background-color: var(--brand-dark) !important;
+}
+
+/* Folder item hover - subtle dark */
+[data-ui="PreviewCard"]:hover {
+  background-color: #151520 !important;
+}
+
+/* Keep active state on hover */
+[data-ui="PreviewCard"][data-pressed]:hover,
+[data-ui="PreviewCard"][data-selected]:hover,
+li[aria-selected="true"] [data-ui="PreviewCard"]:hover {
+  background-color: var(--brand-dark) !important;
+}
+
+/* Ensure chevron stays visible in all states */
+[data-ui="PreviewCard"] [data-testid="compact-preview__status"],
+[data-ui="PreviewCard"] [data-testid="compact-preview__status"] *,
+[data-ui="PreviewCard"] svg[data-sanity-icon="chevron-right"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Chevron color - light gray in normal state, white when selected/pressed */
+[data-ui="PreviewCard"] svg[data-sanity-icon="chevron-right"] {
+  color: #8e93a7 !important;
+}
+
+[data-ui="PreviewCard"][data-selected] svg[data-sanity-icon="chevron-right"],
+[data-ui="PreviewCard"][data-pressed] svg[data-sanity-icon="chevron-right"] {
+  color: #ffffff !important;
+}
+
+/* Icons for pane list items (singleton vs. collection) are set per-project in
+   structure.ts via .icon(DocumentIcon) / .icon(FolderIcon) — see CLAUDE.md.
+   Do not hardcode icon overrides here by document title; it doesn't scale
+   across projects and drifts out of sync with the actual structure. */
+
+/* ============================================
+   Mux Video Upload Progress UI
+   ============================================ */
+
+/* Upload progress card container - make it stand out */
+[data-ui="Card"][data-tone="primary"] {
+  background-color: #1a1a2e !important;
+  border: 1px solid var(--brand) !important;
+}
+
+/* Linear progress bar container */
+[data-ui="Card"][data-tone="primary"] [role="progressbar"],
+[data-ui="LinearProgress"],
+[class*="LinearProgress"] {
+  background-color: #2a2a3a !important;
+  height: 8px !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+/* Linear progress bar fill - the actual progress indicator */
+[data-ui="Card"][data-tone="primary"] [role="progressbar"] > div,
+[data-ui="LinearProgress"] > div,
+[class*="LinearProgress"] > div,
+[role="progressbar"] > span,
+[role="progressbar"] > div {
+  background-color: #4CAF50 !important;
+  background-image: linear-gradient(90deg, #4CAF50, #8BC34A) !important;
+  height: 100% !important;
+  transition: width 0.3s ease !important;
+}
+
+/* Upload text styling */
+[data-ui="Card"][data-tone="primary"] [data-ui="Text"] {
+  color: #ffffff !important;
+}
+
+/* Filename code styling in upload */
+[data-ui="Card"][data-tone="primary"] [data-ui="Code"],
+[data-ui="Card"][data-tone="primary"] code {
+  color: #8BC34A !important;
+  background-color: rgba(139, 195, 74, 0.1) !important;
+  padding: 2px 6px !important;
+  border-radius: 3px !important;
+}
+
+/* Cancel upload button - make it visible but not too prominent */
+[data-ui="Button"][data-tone="critical"][mode="ghost"],
+button[data-tone="critical"] {
+  color: #ff6b6b !important;
+  border-color: #ff6b6b !important;
+}
+
+[data-ui="Button"][data-tone="critical"][mode="ghost"]:hover,
+button[data-tone="critical"]:hover {
+  background-color: rgba(255, 107, 107, 0.1) !important;
+  color: #ff8a8a !important;
+}
+
+/* Disabled cancel button */
+[data-ui="Button"][data-tone="critical"]:disabled,
+button[data-tone="critical"]:disabled {
+  color: #666666 !important;
+  border-color: #444444 !important;
+  opacity: 0.5 !important;
+}
+
+/* Upload drop zone styling */
+[data-ui="Card"][data-tone="transparent"] {
+  background-color: #1a1a1a !important;
+}
+
+[data-ui="Card"][data-tone="transparent"]:hover {
+  border-color: var(--brand) !important;
+  background-color: #1a1a2e !important;
+}
+
+/* "Drag video or audio file" placeholder text */
+[data-ui="Card"][data-tone="transparent"] [data-ui="Text"] {
+  color: #888888 !important;
+}
+
+/* Upload/Select buttons in the uploader */
+[data-ui="Card"][data-tone="transparent"] [data-ui="Button"] {
+  color: var(--brand) !important;
+  border-color: var(--brand) !important;
+}
+
+[data-ui="Card"][data-tone="transparent"] [data-ui="Button"]:hover {
+  background-color: var(--brand) !important;
+  color: #ffffff !important;
+}
+
+/* Video processing status indicators */
+[data-ui="Text"][data-tone="caution"] {
+  color: #f5a623 !important;
+}
+
+[data-ui="Text"][data-tone="positive"] {
+  color: #3ab667 !important;
+}
+
+/* "status: ready" text under video items */
+[data-ui="Text"][data-size="0"],
+[data-ui="Text"][data-size="1"] {
+  color: #888888 !important;
+}
+
+/* Mux processing status banner */
+[data-ui="Card"] [data-ui="Text"]:has(+ [data-ui="Box"]),
+[data-ui="Card"][data-tone="caution"] [data-ui="Text"] {
+  color: #f5a623 !important;
+}
+
+/* Make the "MUX is preparing" text more visible */
+[data-ui="Stack"] > [data-ui="Text"]:first-child {
+  color: #ffffff !important;
+}
+
+/* Ensure all Sanity progress bars are visible */
+[data-ui="Card"] [style*="width"] {
+  min-height: 6px;
+}
+
+/* Styled-components progress bar (sc-* classes) */
+div[class^="sc-"][role="progressbar"],
+div[class*=" sc-"][role="progressbar"] {
+  background-color: #2a2a3a !important;
+  height: 8px !important;
+  border-radius: 4px !important;
+  overflow: visible !important;
+}
+
+div[class^="sc-"][role="progressbar"] > div,
+div[class*=" sc-"][role="progressbar"] > div {
+  background: linear-gradient(90deg, #4CAF50, #8BC34A) !important;
+  height: 100% !important;
+  border-radius: 4px !important;
+}
+
+/* Mux upload progress bar - uses translate3d animation */
+/* Target elements with transform translate3d (the animated progress fill) */
+/* The bar uses style="transform: translate3d(-XX%, 0px, 0px)" */
+[data-ui="Card"][data-tone="default"] [data-ui="Card"][style*="translate3d"] {
+  background: linear-gradient(90deg, #4CAF50, #8BC34A) !important;
+  height: 100% !important;
+  border-radius: 5px !important;
+}
+
+/* The track container - parent of the translating bar */
+[data-ui="Card"][data-tone="default"] > [data-ui="Card"]:has([style*="translate3d"]) {
+  background-color: #2a2a3a !important;
+  height: 10px !important;
+  border-radius: 5px !important;
+  overflow: hidden !important;
+}

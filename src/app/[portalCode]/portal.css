@@ -1,0 +1,460 @@
+/*
+ * Portal styling. Matches the landing page exactly: black background, single
+ * foreground colour, Arial, no size/weight hierarchy — var(--background) and
+ * var(--foreground) come from globals.css so this can never drift from it.
+ */
+
+.fr-portal {
+  position: relative;
+  min-height: 100vh;
+  color: var(--foreground);
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  line-height: 1.25;
+
+  /* The landing page blocks selection; clients need to copy from proposals. */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+@media (min-width: 640px) {
+  .fr-portal {
+    font-size: 12px;
+  }
+}
+
+/* --- gate --- */
+
+.fr-portal__gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.fr-portal__mark {
+  color: var(--foreground);
+}
+
+.fr-unlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.fr-unlock__inputs {
+  display: flex;
+  gap: 8px;
+  width: 184px;
+}
+
+.fr-unlock__digit {
+  flex: 1;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--foreground);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 20px;
+}
+
+.fr-unlock__digit[aria-invalid='true'] {
+  border-color: #6b2a34;
+}
+
+.fr-unlock__keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  gap: 8px;
+}
+
+.fr-unlock__key {
+  width: 56px;
+  height: 56px;
+  background: transparent;
+  border: 1px solid var(--foreground);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.fr-unlock__key:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.fr-unlock__key:not(:disabled):active {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.fr-unlock__key--back {
+  font-size: 16px;
+}
+
+.fr-unlock__status {
+  min-height: 1.5em;
+  color: var(--foreground);
+}
+
+/* --- shell --- */
+
+.fr-portal__main {
+  box-sizing: border-box;
+  min-height: 100vh;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 72px 16px 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .fr-portal__main {
+    padding: 72px 24px 56px;
+  }
+}
+
+/* Each row is its own full-bleed bar with its own rule, stacked directly on
+   top of one another — not one box with two lines inside it. */
+.fr-portal__header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  background: var(--background);
+}
+
+.fr-portal__header-bar {
+  padding: 5px;
+  text-align: center;
+  color: var(--foreground);
+  border-bottom: 1px solid var(--foreground);
+}
+
+.fr-portal__footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  padding: 6px 16px;
+  background: var(--background);
+  border-top: 1px solid var(--foreground);
+}
+
+.fr-portal__footer-code {
+  color: var(--foreground);
+}
+
+.fr-portal__title {
+  margin: 0 0 8px;
+  font-size: inherit;
+  font-weight: normal;
+  text-align: center;
+  color: var(--foreground);
+}
+
+.fr-portal__empty {
+  margin-top: 48px;
+  text-align: center;
+  color: var(--foreground);
+}
+
+/* --- index --- */
+
+.fr-portal__index {
+  list-style: none;
+  margin: 48px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.fr-portal__link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--foreground);
+}
+
+.fr-portal__link-summary {
+  color: var(--foreground);
+}
+
+/* --- blocks --- */
+
+.fr-blocks {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 64px;
+  margin-top: 48px;
+}
+
+.fr-richtext {
+  margin: 0 auto;
+}
+
+.fr-richtext h2,
+.fr-richtext h3,
+.fr-richtext p,
+.fr-richtext ul,
+.fr-richtext ol,
+.fr-richtext blockquote {
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.fr-richtext h2 {
+  margin-top: 32px;
+  margin-bottom: 8px;
+  font-size: inherit;
+  font-weight: normal;
+  color: var(--foreground);
+}
+
+.fr-richtext h3 {
+  margin-top: 24px;
+  margin-bottom: 8px;
+  font-weight: normal;
+  color: var(--foreground);
+}
+
+.fr-richtext p,
+.fr-richtext ul,
+.fr-richtext ol {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.fr-richtext ul,
+.fr-richtext ol {
+  padding-left: 16px;
+}
+
+.fr-richtext blockquote {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  padding-left: 12px;
+  border-left: 1px solid var(--foreground);
+  color: var(--foreground);
+}
+
+.fr-richtext a {
+  color: var(--foreground);
+  text-decoration: underline;
+}
+
+.fr-figure {
+  margin: 24px auto;
+  width: var(--fr-figure-width, 100%);
+}
+
+.fr-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 640px) {
+  .fr-richtext h2,
+  .fr-richtext h3,
+  .fr-richtext p,
+  .fr-richtext ul,
+  .fr-richtext ol,
+  .fr-richtext blockquote,
+  .fr-figure {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+.fr-figure figcaption {
+  margin-top: 8px;
+  color: var(--foreground);
+}
+
+/* --- scope table --- */
+
+.fr-scope__bar,
+.fr-scope__totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 6px 0;
+  color: var(--foreground);
+}
+
+.fr-scope__bar {
+  border-top: 1px solid var(--foreground);
+  border-bottom: 1px solid var(--foreground);
+}
+
+.fr-scope__totals {
+  border-top: 1px solid var(--foreground);
+  border-bottom: 1px solid var(--foreground);
+}
+
+.fr-scope__bar-cell--end,
+.fr-scope__cell--end {
+  text-align: right;
+}
+
+.fr-scope__price-was {
+  color: var(--foreground);
+}
+
+.fr-scope__scroll {
+  overflow-x: auto;
+}
+
+.fr-scope__table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.fr-scope__table th {
+  padding: 24px 16px 24px 0;
+  font-weight: normal;
+  vertical-align: top;
+  color: var(--foreground);
+}
+
+.fr-scope__table td {
+  padding: 24px 16px 24px 0;
+  vertical-align: top;
+}
+
+.fr-scope__table th:last-child,
+.fr-scope__table td:last-child {
+  padding-right: 0;
+}
+
+.fr-scope__row-title {
+  color: var(--foreground);
+  margin-bottom: 8px;
+}
+
+.fr-scope__bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fr-scope__bullet::before {
+  content: '• ';
+}
+
+.fr-scope__bullet--1 {
+  padding-left: 16px;
+}
+
+.fr-scope__bullet--2 {
+  padding-left: 32px;
+  color: var(--foreground);
+}
+
+.fr-scope__deliverable {
+  margin-bottom: 2px;
+}
+
+.fr-scope__footnotes {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 8px;
+  color: var(--foreground);
+}
+
+/* --- files --- */
+
+.fr-files__heading {
+  margin: 0 0 8px;
+  font-size: inherit;
+  font-weight: normal;
+  color: var(--foreground);
+}
+
+.fr-files__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--foreground);
+}
+
+.fr-files__link {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--foreground);
+  color: var(--foreground);
+}
+
+.fr-files__note {
+  color: var(--foreground);
+}
+
+.fr-files__action {
+  margin-left: auto;
+}
+
+/* --- video --- */
+
+.fr-video__title {
+  margin: 0 0 8px;
+  font-size: inherit;
+  font-weight: normal;
+  color: var(--foreground);
+}
+
+.fr-video__description {
+  max-width: 70ch;
+  margin: 0 0 16px;
+}
+
+.fr-video__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--foreground);
+  color: var(--foreground);
+}
+
+.fr-video__chapters {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.fr-video__chapters li {
+  display: flex;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.fr-video__timecode {
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+}
