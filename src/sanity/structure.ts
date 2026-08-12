@@ -22,4 +22,18 @@ export const structure: StructureResolver = (S) =>
             .title('Activity')
             .defaultOrdering([{ field: 'at', direction: 'desc' }]),
         ),
+      S.divider(),
+      S.listItem()
+        .title('Invoices')
+        .child(
+          S.documentTypeList('invoice')
+            .title('Invoices')
+            .defaultOrdering([{ field: 'number', direction: 'desc' }]),
+        ),
+      S.listItem()
+        .title('Invoice Settings')
+        .id('invoiceSettings')
+        .child(
+          S.document().schemaType('invoiceSettings').documentId('invoiceSettings'),
+        ),
     ])
