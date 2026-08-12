@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { unstable_cache } from 'next/cache'
+
 import { sanityClient } from '@/sanity/lib/client'
 import { dataset, projectId } from '@/sanity/env'
 
@@ -38,6 +40,17 @@ export function parseAssetRef(ref: string): ParsedAssetRef | null {
   return { kind, id, extension, dimensions }
 }
 
+/**
+ * The hash Sanity assigns an asset is not itself a document id — the id is
+ * `image-<hash>-<dims>-<ext>` (or `file-<hash>-<ext>`). `references()` matches
+ * on the full document id, so this reassembles it from the parsed ref.
+ */
+export function assetDocumentId(parsed: ParsedAssetRef): string {
+  return parsed.kind === 'image' && parsed.dimensions
+    ? `image-${parsed.id}-${parsed.dimensions}-${parsed.extension}`
+    : `${parsed.kind}-${parsed.id}-${parsed.extension}`
+}
+
 export function assetCdnUrl(parsed: ParsedAssetRef): string {
   const base = `https://cdn.sanity.io/${parsed.kind === 'image' ? 'images' : 'files'}/${projectId}/${dataset}`
   const name =
@@ -51,8 +64,12 @@ export function assetCdnUrl(parsed: ParsedAssetRef): string {
  * Confirms the asset is actually referenced by one of this portal's pages.
  * Without this, an unlocked client could pull any asset in the dataset by id —
  * ids are unguessable, but "unguessable" is not an access control.
+ *
+ * This is the auth check, not the file itself — session verification still
+ * runs on every request in the route, so caching this only saves the repeat
+ * Sanity round-trip for the same asset, not access control.
  */
-export async function assetBelongsToPortal(
+async function checkAssetBelongsToPortal(
   portalCode: string,
   assetId: string,
 ): Promise<boolean> {
@@ -71,6 +88,12 @@ export async function assetBelongsToPortal(
     return false
   }
 }
+
+export const assetBelongsToPortal = unstable_cache(
+  checkAssetBelongsToPortal,
+  ['portal-asset-membership'],
+  { revalidate: 60 },
+)
 
 /** Only these reach the Sanity image pipeline; everything else is dropped. */
 const ALLOWED_IMAGE_PARAMS = new Set([

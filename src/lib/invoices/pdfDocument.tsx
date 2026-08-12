@@ -233,7 +233,7 @@ export function InvoicePdfDocument({ invoice }: { invoice: Invoice }) {
             <Text style={styles.taxNumberLine}>TAX # {invoice.tax.taxNumber}</Text>
           </View>
         ) : null}
-        {invoice.currency === 'USD' ? (
+        {invoice.currency === 'USD' || invoice.currency === 'CAD' ? (
           <View style={styles.noteRow}>
             <Text style={styles.colItem} />
             <Text style={styles.colQty} />

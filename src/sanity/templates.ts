@@ -13,7 +13,6 @@ function bullet(key: string, text: string, indent = 0) {
 const SCOPE_STARTER = {
   title: 'Scope',
   slug: { _type: 'slug', current: 'scope' },
-  summary: 'Scope, deliverables, timeline and cost.',
   blocks: [
     {
       _key: 'scope',

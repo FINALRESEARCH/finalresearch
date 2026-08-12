@@ -35,6 +35,33 @@ function components(portalCode: string): PortableTextComponents {
           </figure>
         )
       },
+      externalImage: ({ value }) => {
+        const url: string | undefined = value?.url
+        if (!url) return null
+        const widthPercent: number =
+          typeof value?.widthPercent === 'number' ? value.widthPercent : 100
+        const linkUrl: string | undefined = value?.linkUrl
+        const image = (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={value?.alt || ''} loading="lazy" />
+        )
+        return (
+          <figure
+            className="fr-figure"
+            style={{ '--fr-figure-width': `${widthPercent}%` } as never}
+          >
+            {/* Hotlinked from its source (e.g. Are.na) — not a Sanity asset. */}
+            {linkUrl ? (
+              <a href={linkUrl} rel="noopener noreferrer" target="_blank">
+                {image}
+              </a>
+            ) : (
+              image
+            )}
+            {value?.caption && <figcaption>{value.caption}</figcaption>}
+          </figure>
+        )
+      },
     },
     marks: {
       link: ({ value, children }) => (

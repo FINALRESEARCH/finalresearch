@@ -27,12 +27,6 @@ export const portalPage = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
-      name: 'summary',
-      type: 'text',
-      rows: 2,
-      description: 'Shown on the portal index beneath the page title',
-    }),
-    defineField({
       name: 'subtitle',
       title: 'Subtitle',
       type: 'string',

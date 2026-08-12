@@ -13,7 +13,7 @@ export type PortalSummary = {
   _id: string
   code: string
   status: 'live' | 'revoked'
-  pages: { title: string; slug: string; summary: string | null }[]
+  pages: { title: string; slug: string }[]
 }
 
 const portalSummaryQuery = defineQuery(`
@@ -23,8 +23,7 @@ const portalSummaryQuery = defineQuery(`
     status,
     "pages": pages[]->{
       title,
-      "slug": slug.current,
-      summary
+      "slug": slug.current
     }
   }
 `)
@@ -51,7 +50,6 @@ const portalPageQuery = defineQuery(`
     title,
     "slug": slug.current,
     subtitle,
-    summary,
     blocks
   }
 `)

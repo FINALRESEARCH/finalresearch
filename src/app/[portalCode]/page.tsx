@@ -61,9 +61,6 @@ export default async function PortalIndex({
             <li key={page.slug}>
               <Link href={`/${portalCode}/${page.slug}`} className="fr-portal__link">
                 <span className="fr-portal__link-title">{page.title}</span>
-                {page.summary && (
-                  <span className="fr-portal__link-summary">{page.summary}</span>
-                )}
               </Link>
             </li>
           ))}

@@ -41,18 +41,17 @@ export function ScopeTable({
 
   return (
     <section className="fr-scope" aria-label={block.heading || 'Scope'}>
-      <div className="fr-scope__bar">
-        <span className="fr-scope__bar-cell">FINAL RESEARCH</span>
-        <span className="fr-scope__bar-cell">{block.heading}</span>
-        <span className="fr-scope__bar-cell">{formatDate(block.date)}</span>
-        <span className="fr-scope__bar-cell fr-scope__bar-cell--end">
-          {projectCode.toUpperCase()}
-        </span>
-      </div>
-
       <div className="fr-scope__scroll">
         <table className="fr-scope__table">
           <thead>
+            <tr className="fr-scope__bar-row">
+              <th scope="col">FINAL RESEARCH</th>
+              <th scope="col">{block.heading}</th>
+              <th scope="col">{formatDate(block.date)}</th>
+              <th scope="col" className="fr-scope__cell--end">
+                {projectCode.toUpperCase().replace(/-/g, '_')}
+              </th>
+            </tr>
             <tr>
               <th scope="col">Scope</th>
               <th scope="col">Deliverables</th>
@@ -81,13 +80,23 @@ export function ScopeTable({
                   )}
                 </td>
                 <td>
-                  {(row.deliverables ?? []).map((line, i) => (
-                    <div key={i} className="fr-scope__deliverable">
-                      {line}
-                    </div>
-                  ))}
+                  {row.deliverables && row.deliverables.length > 0 ? (
+                    row.deliverables.map((line, i) => (
+                      <div key={i} className="fr-scope__deliverable">
+                        {line}
+                      </div>
+                    ))
+                  ) : (
+                    EM_DASH
+                  )}
                 </td>
-                <td>{row.time || EM_DASH}</td>
+                <td>
+                  {row.time
+                    ? row.time
+                        .split(' / ')
+                        .map((line, i) => <div key={i}>{line}</div>)
+                    : EM_DASH}
+                </td>
                 <td className="fr-scope__cell--end">{row.cost || EM_DASH}</td>
               </tr>
             ))}
@@ -96,12 +105,11 @@ export function ScopeTable({
       </div>
 
       <div className="fr-scope__totals">
-        <span className="fr-scope__bar-cell">Totals</span>
-        <span className="fr-scope__bar-cell" />
-        <span className="fr-scope__bar-cell">
+        <span className="fr-scope__totals-label">Totals</span>
+        <span className="fr-scope__totals-duration">
           {block.duration && `DURATION: ${block.duration}`}
         </span>
-        <span className="fr-scope__bar-cell fr-scope__bar-cell--end">
+        <span className="fr-scope__totals-price">
           {block.priceOriginal && (
             <s className="fr-scope__price-was">{block.priceOriginal}</s>
           )}{' '}
@@ -110,13 +118,19 @@ export function ScopeTable({
       </div>
 
       <div className="fr-scope__footnotes">
-        <div>
+        <span className="fr-scope__footnotes-spacer" />
+        <div className="fr-scope__footnotes-dates">
           {block.startNote && <div>START: {block.startNote}</div>}
           {block.endNote && <div>END: {block.endNote}</div>}
         </div>
-        <div className="fr-scope__cell--end">
-          {block.paymentTerms && <div>Payment Terms: {block.paymentTerms}</div>}
-          {block.payableTo && <div>Payable to {block.payableTo}</div>}
+        <div className="fr-scope__footnotes-payment">
+          {block.paymentTerms && (
+            <div>
+              Payment Terms:
+              <br />
+              {block.paymentTerms}
+            </div>
+          )}
         </div>
       </div>
     </section>

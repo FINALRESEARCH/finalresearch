@@ -69,6 +69,54 @@ export const richText = defineType({
             }),
           ],
         }),
+        defineArrayMember({
+          type: 'object',
+          name: 'externalImage',
+          title: 'External image (URL)',
+          description:
+            'Hotlinked, not uploaded — for reference images living elsewhere (e.g. Are.na). Breaks if the source removes it.',
+          fields: [
+            defineField({
+              name: 'url',
+              type: 'url',
+              title: 'Image URL',
+              validation: (rule) =>
+                rule.required().uri({ scheme: ['http', 'https'] }),
+            }),
+            defineField({
+              name: 'alt',
+              type: 'string',
+              title: 'Alt text',
+            }),
+            defineField({
+              name: 'caption',
+              type: 'string',
+            }),
+            defineField({
+              name: 'linkUrl',
+              title: 'Links to',
+              type: 'url',
+              description:
+                'Optional — wraps the image in a link to this URL, e.g. the site being referenced.',
+              validation: (rule) =>
+                rule.uri({ scheme: ['http', 'https'] }),
+            }),
+            defineField({
+              name: 'widthPercent',
+              title: 'Width',
+              type: 'number',
+              initialValue: 100,
+              validation: (rule) => rule.min(10).max(100),
+              components: { input: WidthSliderInput },
+            }),
+          ],
+          preview: {
+            select: { caption: 'caption', url: 'url' },
+            prepare({ caption, url }) {
+              return { title: caption || 'External image', subtitle: url }
+            },
+          },
+        }),
       ],
     }),
   ],

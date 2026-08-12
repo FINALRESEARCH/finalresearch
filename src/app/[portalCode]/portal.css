@@ -112,7 +112,7 @@
   min-height: 100vh;
   max-width: 1600px;
   margin: 0 auto;
-  padding: 72px 16px 56px;
+  padding: 72px 16px 120px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -121,7 +121,7 @@
 
 @media (min-width: 640px) {
   .fr-portal__main {
-    padding: 72px 24px 56px;
+    padding: 72px 24px 120px;
   }
 }
 
@@ -178,12 +178,12 @@
 
 .fr-portal__index {
   list-style: none;
-  margin: 48px 0 0;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 4px;
   text-align: center;
 }
 
@@ -194,8 +194,18 @@
   color: var(--foreground);
 }
 
-.fr-portal__link-summary {
-  color: var(--foreground);
+/* Every link in the portal dims on hover — index items, footer, and
+   in-content links (including reference images wrapped in a link). */
+.fr-portal__link,
+.fr-portal__footer-code,
+.fr-richtext a {
+  transition: opacity 0.15s ease;
+}
+
+.fr-portal__link:hover,
+.fr-portal__footer-code:hover,
+.fr-richtext a:hover {
+  opacity: 0.6;
 }
 
 /* --- blocks --- */
@@ -205,7 +215,11 @@
   display: flex;
   flex-direction: column;
   gap: 64px;
-  margin-top: 48px;
+  /* Centers vertically when it fits; when it overflows the auto margins
+     collapse to 0 and it starts flush at the top instead of being clipped
+     top and bottom. */
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .fr-richtext {
@@ -231,6 +245,12 @@
   color: var(--foreground);
 }
 
+/* Next Steps follows the last reference image — give it the same 120px
+   the page closes with below, so the section reads symmetrically. */
+.fr-figure + h2 {
+  margin-top: 120px;
+}
+
 .fr-richtext h3 {
   margin-top: 24px;
   margin-bottom: 8px;
@@ -243,6 +263,12 @@
 .fr-richtext ol {
   margin-top: 0;
   margin-bottom: 12px;
+}
+
+/* Next Steps closes the page — its two paragraphs (the last <p>s in the
+   document) get more room so they don't read as one dense block. */
+.fr-richtext > p:nth-last-of-type(2) {
+  margin-bottom: 32px;
 }
 
 .fr-richtext ul,
@@ -264,8 +290,21 @@
 }
 
 .fr-figure {
-  margin: 24px auto;
+  margin: 32px auto;
   width: var(--fr-figure-width, 100%);
+  border: 1px solid var(--foreground);
+  padding: 12px;
+}
+
+/* A paragraph sandwiched between two reference images is doing real work —
+   breaking the hierarchy so it doesn't read as just another caption. Give it
+   more room than default paragraph spacing on both sides. */
+.fr-figure + p {
+  margin-top: 112px;
+}
+
+.fr-richtext p:has(+ .fr-figure) {
+  margin-bottom: 112px;
 }
 
 .fr-figure img {
@@ -294,26 +333,10 @@
 
 /* --- scope table --- */
 
-.fr-scope__bar,
-.fr-scope__totals {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 16px;
-  padding: 6px 0;
-  color: var(--foreground);
+.fr-scope {
+  border: 1px solid var(--foreground);
 }
 
-.fr-scope__bar {
-  border-top: 1px solid var(--foreground);
-  border-bottom: 1px solid var(--foreground);
-}
-
-.fr-scope__totals {
-  border-top: 1px solid var(--foreground);
-  border-bottom: 1px solid var(--foreground);
-}
-
-.fr-scope__bar-cell--end,
 .fr-scope__cell--end {
   text-align: right;
 }
@@ -333,21 +356,105 @@
   text-align: left;
 }
 
-.fr-scope__table th {
+.fr-scope__table th,
+.fr-scope__table td {
   padding: 24px 16px 24px 0;
   font-weight: normal;
   vertical-align: top;
   color: var(--foreground);
 }
 
-.fr-scope__table td {
-  padding: 24px 16px 24px 0;
-  vertical-align: top;
+.fr-scope__table th:first-child,
+.fr-scope__table td:first-child {
+  padding-left: 6px;
 }
 
 .fr-scope__table th:last-child,
 .fr-scope__table td:last-child {
-  padding-right: 0;
+  padding-right: 16px;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.fr-scope__bar-row th {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--foreground);
+}
+
+/* Totals and footnotes live outside the horizontally-scrolling table so
+   they're always visible on narrow screens instead of scrolling with it.
+   They stay a single row at every width: the label/price ends stay fixed,
+   the middle text shrinks and wraps internally instead of pushing price
+   off-screen. */
+.fr-scope__totals {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding: 6px 16px 6px 6px;
+  border-top: 1px solid var(--foreground);
+  border-bottom: 1px solid var(--foreground);
+  color: var(--foreground);
+}
+
+.fr-scope__totals-label {
+  flex: 0 0 150px;
+}
+
+.fr-scope__totals-duration {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  overflow-wrap: break-word;
+}
+
+.fr-scope__totals-price {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.fr-scope__footnotes {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 8px 16px 8px 6px;
+  color: var(--foreground);
+}
+
+/* Mirrors .fr-scope__totals-label's slot so START/END lines up with
+   DURATION, not with the "Totals" label itself. */
+.fr-scope__footnotes-spacer {
+  flex: 0 0 150px;
+}
+
+.fr-scope__footnotes-dates {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  overflow-wrap: break-word;
+}
+
+/* Anchored to the far right, directly under the price — always smaller
+   and right-aligned, wraps instead of forcing the row wider. */
+.fr-scope__footnotes-payment {
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 0.85em;
+  overflow-wrap: break-word;
+}
+
+/* Placed after both base rules above so it reliably wins the cascade for
+   both selectors — this is what lines duration up with START/END,
+   roughly under the Deliverables column. */
+@media (min-width: 641px) {
+  .fr-scope__totals-label,
+  .fr-scope__footnotes-spacer {
+    flex-basis: 47%;
+  }
 }
 
 .fr-scope__row-title {
@@ -361,29 +468,28 @@
   padding: 0;
 }
 
+.fr-scope__bullet {
+  position: relative;
+  padding-left: 10px;
+}
+
 .fr-scope__bullet::before {
-  content: '• ';
+  content: '•';
+  position: absolute;
+  left: 0;
 }
 
 .fr-scope__bullet--1 {
-  padding-left: 16px;
+  margin-left: 16px;
 }
 
 .fr-scope__bullet--2 {
-  padding-left: 32px;
+  margin-left: 32px;
   color: var(--foreground);
 }
 
 .fr-scope__deliverable {
   margin-bottom: 2px;
-}
-
-.fr-scope__footnotes {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding-top: 8px;
-  color: var(--foreground);
 }
 
 /* --- files --- */
