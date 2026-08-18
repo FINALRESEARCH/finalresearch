@@ -543,7 +543,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 16 / 9;
+  min-height: 200px;
   border: 1px solid var(--foreground);
   color: var(--foreground);
 }
@@ -563,4 +563,192 @@
 .fr-video__timecode {
   color: var(--foreground);
   font-variant-numeric: tabular-nums;
+}
+
+/* --- player --- */
+
+/*
+ * Text-only chrome. No icons, no accent colour, no size hierarchy — the
+ * controls read as another line of portal copy that happens to be clickable.
+ */
+.fr-player {
+  position: relative;
+  outline: none;
+}
+
+.fr-player__stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--background);
+  border: 1px solid var(--foreground);
+}
+
+/*
+ * The aspect ratio lives on the video (set inline from the Mux asset), not on
+ * a wrapper. In flow with height:100% the video falls back to its intrinsic
+ * 300x150 until a frame decodes, so the first play resized the box and bumped
+ * the page; sizing it from its own ratio is stable before and after decode,
+ * and leaves the stage nothing to collapse to.
+ */
+.fr-player__video {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  background: var(--background);
+  cursor: pointer;
+}
+
+.fr-player__controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.fr-player__button {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+/* Matches the keypad's invert-on-press so the player feels like the gate. */
+.fr-player__button:hover,
+.fr-player__button:focus-visible {
+  background: var(--foreground);
+  color: var(--background);
+  outline: none;
+}
+
+.fr-player__time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* All options stack in one grid cell, so the cell is as wide as the longest
+   and the row never reflows when the label changes. */
+.fr-player__stable {
+  display: inline-grid;
+  justify-items: center;
+}
+
+.fr-player__stable > * {
+  grid-area: 1 / 1;
+}
+
+.fr-player__stable-ghost {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Hairline rule with a generous invisible hit area — the line stays 1px, the
+   grab target is the full row height. */
+.fr-player__scrubber {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 16px;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+
+.fr-player__track,
+.fr-player__buffered,
+.fr-player__progress {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.fr-player__track {
+  width: 100%;
+  background: var(--foreground);
+  opacity: 0.3;
+}
+
+.fr-player__buffered {
+  background: var(--foreground);
+  opacity: 0.5;
+}
+
+.fr-player__progress {
+  background: var(--foreground);
+}
+
+.fr-player__handle {
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 9px;
+  margin-left: -1px;
+  background: var(--foreground);
+  transform: translateY(-50%);
+}
+
+.fr-player__scrubber:focus-visible .fr-player__handle {
+  height: 15px;
+}
+
+.fr-player__chapters {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.fr-player__chapter {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fr-player__chapter:hover,
+.fr-player__chapter:focus-visible {
+  background: var(--foreground);
+  color: var(--background);
+  outline: none;
+}
+
+/* In fullscreen the stage must give up its aspect-ratio box or the controls
+   get pushed off the bottom of the screen. */
+.fr-player--fullscreen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  background: var(--background);
+  padding: 0 16px;
+}
+
+.fr-player--fullscreen .fr-player__stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: none;
+}
+
+.fr-player--fullscreen .fr-player__video {
+  height: 100%;
+  aspect-ratio: auto !important;
+}
+
+.fr-player--fullscreen .fr-player__chapters {
+  display: none;
 }

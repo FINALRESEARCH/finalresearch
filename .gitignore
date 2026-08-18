@@ -14,3 +14,7 @@ out/
 # IDE
 .claude/
 .vscode/
+
+# typescript incremental build cache
+tsconfig.tsbuildinfo
+*.tsbuildinfo

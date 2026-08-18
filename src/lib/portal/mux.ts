@@ -41,15 +41,27 @@ export type MuxTokens = {
  */
 export async function signPlayback(
   playbackId: string,
+  thumbTime = 0,
 ): Promise<MuxTokens | null> {
   if (!isMuxConfigured()) return null
 
-  const sign = (type: 'video' | 'thumbnail' | 'storyboard') =>
-    mux().jwt.signPlaybackId(playbackId, { type, expiration: TOKEN_TTL })
+  const sign = (
+    type: 'video' | 'thumbnail' | 'storyboard',
+    params?: Record<string, string>,
+  ) => mux().jwt.signPlaybackId(playbackId, { type, expiration: TOKEN_TTL, params })
 
+  /*
+   * The poster frame defaults to t=0 rather than Mux's own default, which is
+   * the midpoint of the asset — on a long walkthrough that lands on an
+   * arbitrary mid-scroll frame.
+   *
+   * `time` has to be a claim inside the token, not a query param on the URL:
+   * signed image URLs are validated against the token's params, so appending
+   * ?time=0 to a token signed without it is rejected.
+   */
   const [playback, thumbnail, storyboard] = await Promise.all([
     sign('video'),
-    sign('thumbnail'),
+    sign('thumbnail', { time: String(thumbTime) }),
     sign('storyboard'),
   ])
 

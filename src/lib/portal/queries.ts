@@ -40,6 +40,12 @@ const portalAuthQuery = defineQuery(`
  * Queried by slug, then constrained to pages this portal actually lists. The
  * `_id in ...pages[]._ref` clause is the access check: a page belonging to
  * another client can't be pulled up by guessing its slug.
+ *
+ * The videoWalkthrough branch dereferences its mux.videoAsset — the raw block
+ * only carries an _ref. Fields are pulled out explicitly rather than splatting
+ * the asset, which would ship the whole Mux payload (upload IDs, track lists)
+ * into the RSC payload. GROQ has no block comments, so this note lives out
+ * here rather than inside the query string.
  */
 const portalPageQuery = defineQuery(`
   *[
@@ -50,7 +56,16 @@ const portalPageQuery = defineQuery(`
     title,
     "slug": slug.current,
     subtitle,
-    blocks
+    blocks[]{
+      ...,
+      _type == "videoWalkthrough" => {
+        "playbackId": video.asset->playbackId,
+        "assetStatus": video.asset->status,
+        "durationSeconds": video.asset->data.duration,
+        "aspectRatio": video.asset->data.aspect_ratio,
+        "thumbTime": video.asset->thumbTime
+      }
+    }
   }
 `)
 

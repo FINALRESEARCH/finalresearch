@@ -1,19 +1,18 @@
 import { signPlayback } from '@/lib/portal/mux'
-import { MuxPlayer } from './MuxPlayer'
+import { VideoPlayer, type Chapter } from './VideoPlayer'
 
 export type VideoWalkthroughBlock = {
   _key: string
   title?: string
   description?: string
-  muxPlaybackId?: string
+  /** Dereferenced from the mux.videoAsset in portalPageQuery. */
+  playbackId?: string
+  assetStatus?: string
   durationSeconds?: number
-  chapters?: { _key: string; label?: string; startSeconds?: number }[]
-}
-
-function timecode(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = String(Math.floor(seconds % 60)).padStart(2, '0')
-  return `${m}:${s}`
+  aspectRatio?: string
+  /** Editor-picked poster frame; falls back to the first frame. */
+  thumbTime?: number
+  chapters?: Chapter[]
 }
 
 export async function VideoWalkthrough({
@@ -21,9 +20,19 @@ export async function VideoWalkthrough({
 }: {
   block: VideoWalkthroughBlock
 }) {
-  if (!block.muxPlaybackId) return null
+  if (!block.playbackId) return null
 
-  const tokens = await signPlayback(block.muxPlaybackId)
+  // Mux is still transcoding; a player here would just error.
+  if (block.assetStatus && block.assetStatus !== 'ready') {
+    return (
+      <section className="fr-video">
+        {block.title && <h2 className="fr-video__title">{block.title}</h2>}
+        <div className="fr-video__placeholder">Video is still processing.</div>
+      </section>
+    )
+  }
+
+  const tokens = await signPlayback(block.playbackId, block.thumbTime ?? 0)
 
   return (
     <section className="fr-video">
@@ -33,28 +42,19 @@ export async function VideoWalkthrough({
       )}
 
       {tokens ? (
-        <MuxPlayer
-          playbackId={block.muxPlaybackId}
-          tokens={tokens}
+        <VideoPlayer
+          playbackId={block.playbackId}
+          tokens={{ playback: tokens.playback, storyboard: tokens.storyboard }}
+          posterToken={tokens.thumbnail}
           title={block.title}
+          aspectRatio={block.aspectRatio}
+          initialDuration={block.durationSeconds}
+          chapters={block.chapters}
         />
       ) : (
         <div className="fr-video__placeholder">
           Video unavailable — Mux signing keys are not configured.
         </div>
-      )}
-
-      {block.chapters && block.chapters.length > 0 && (
-        <ul className="fr-video__chapters">
-          {block.chapters.map((chapter) => (
-            <li key={chapter._key}>
-              <span className="fr-video__timecode">
-                {timecode(chapter.startSeconds || 0)}
-              </span>
-              <span>{chapter.label}</span>
-            </li>
-          ))}
-        </ul>
       )}
     </section>
   )

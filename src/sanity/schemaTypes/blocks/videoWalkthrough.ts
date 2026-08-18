@@ -42,17 +42,12 @@ export const videoWalkthrough = defineType({
       rows: 3,
     }),
     defineField({
-      name: 'muxPlaybackId',
-      title: 'Mux playback ID',
-      type: 'string',
+      name: 'video',
+      title: 'Video',
+      type: 'mux.video',
       description:
-        'From the Mux dashboard. Must be a SIGNED playback ID — public IDs bypass the passcode gate.',
+        'Upload straight to Mux. Uploads are signed-only, so playback still goes through the passcode gate — see muxInput() in sanity.config.ts.',
       validation: (rule) => rule.required(),
-    }),
-    defineField({
-      name: 'durationSeconds',
-      title: 'Duration (seconds)',
-      type: 'number',
     }),
     defineField({
       name: 'chapters',
@@ -61,9 +56,12 @@ export const videoWalkthrough = defineType({
     }),
   ],
   preview: {
-    select: { title: 'title', id: 'muxPlaybackId' },
-    prepare({ title, id }) {
-      return { title: title || 'Video walkthrough', subtitle: id }
+    select: { title: 'title', filename: 'video.asset.filename' },
+    prepare({ title, filename }) {
+      return {
+        title: title || 'Video walkthrough',
+        subtitle: filename || 'No video uploaded',
+      }
     },
   },
 })
