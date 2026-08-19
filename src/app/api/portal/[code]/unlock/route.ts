@@ -98,7 +98,7 @@ export async function POST(
   response.cookies.set({
     name: cookieName(code),
     value: token,
-    path: cookiePath(code),
+    path: cookiePath(),
     ...sessionCookieOptions,
   })
 

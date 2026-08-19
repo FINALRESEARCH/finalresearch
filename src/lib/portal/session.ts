@@ -11,15 +11,19 @@ function secret(): Uint8Array {
 }
 
 /**
- * One cookie per portal, scoped to that portal's path — unlocking one client
- * never grants access to another, even on a shared browser.
+ * One cookie per portal — unlocking one client never grants access to
+ * another, even on a shared browser. That isolation comes from the JWT's
+ * `sub` claim (checked in verifySession), not from cookie scoping: the asset
+ * proxy lives at /api/portal/<code>/asset/*, outside the /<code>/* page
+ * path, so the cookie has to be set at the root or the browser simply never
+ * sends it there.
  */
 export function cookieName(portalCode: string): string {
   return `fr_portal_${portalCode}`
 }
 
-export function cookiePath(portalCode: string): string {
-  return `/${portalCode}`
+export function cookiePath(): string {
+  return '/'
 }
 
 export async function issueSession(portalCode: string): Promise<string> {
