@@ -22,7 +22,8 @@ export async function GET(
 ) {
   const { code, ref } = await params
 
-  if (!isPortalCode(code)) return new NextResponse(null, { status: 404 })
+  if (!isPortalCode(code))
+    return new NextResponse(null, { status: 404, headers: { 'X-Debug-Reason': 'bad-code' } })
 
   // Mirrors the page routes: a Studio-authenticated preview session bypasses
   // the passcode gate here too, so drafts can be reviewed end-to-end.
@@ -32,13 +33,18 @@ export async function GET(
   const unlocked =
     preview ||
     (await verifySession(jar.get(cookieName(code))?.value, code))
-  if (!unlocked) return new NextResponse(null, { status: 404 })
+  if (!unlocked)
+    return new NextResponse(null, { status: 404, headers: { 'X-Debug-Reason': 'locked' } })
 
   const parsed = parseAssetRef(decodeURIComponent(ref))
-  if (!parsed) return new NextResponse(null, { status: 404 })
+  if (!parsed)
+    return new NextResponse(null, { status: 404, headers: { 'X-Debug-Reason': 'bad-ref' } })
 
   if (!(await assetBelongsToPortal(code, assetDocumentId(parsed), preview))) {
-    return new NextResponse(null, { status: 404 })
+    return new NextResponse(null, {
+      status: 404,
+      headers: { 'X-Debug-Reason': 'not-belongs' },
+    })
   }
 
   const query =
@@ -52,7 +58,13 @@ export async function GET(
   })
 
   if (!upstream.ok || !upstream.body) {
-    return new NextResponse(null, { status: 404 })
+    return new NextResponse(null, {
+      status: 404,
+      headers: {
+        'X-Debug-Reason': `upstream-${upstream.status}`,
+        'X-Debug-Url': assetCdnUrl(parsed),
+      },
+    })
   }
 
   const download = request.nextUrl.searchParams.get('dl') === '1'
