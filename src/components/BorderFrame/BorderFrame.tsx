@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useMemo, useState, useEffect } from 'react';
+import { useRef, useMemo, useState, useEffect, createRef, useCallback } from 'react';
 import { useMousePosition, MousePosition } from '@/hooks/useMousePosition';
-import { useHoverZone } from '@/hooks/useHoverZone';
+import { useHoverZone, HoverZone } from '@/hooks/useHoverZone';
 import { BorderEdge } from './BorderEdge';
 import { EdgeLabel } from './EdgeLabel';
 import { HoverTextBlock } from './HoverTextBlock';
@@ -20,14 +20,310 @@ type PlacedBlocks = {
   [key in 'top' | 'bottom' | 'left' | 'right']?: PlacedBlock;
 };
 
+// Threshold for distinguishing tap from drag (in pixels) - lower = more sensitive
+const TAP_THRESHOLD = 2.25;
+// Duration for cursor return animation (ms)
+const CURSOR_RETURN_DURATION = 200;
+
 export function BorderFrame() {
   const mousePosition = useMousePosition();
-  const activeZone = useHoverZone(mousePosition);
+  const desktopActiveZone = useHoverZone(mousePosition);
   const textBlockRef = useRef<HTMLDivElement>(null);
   const [textBlockRect, setTextBlockRect] = useState<DOMRect | null>(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [placedBlocks, setPlacedBlocks] = useState<PlacedBlocks>({});
   const [justPlacedZones, setJustPlacedZones] = useState<Set<string>>(new Set());
+  const [hoveredLinkRect, setHoveredLinkRect] = useState<DOMRect | null>(null);
+  const placedBlockRefs = useRef<Record<string, React.RefObject<HTMLDivElement | null>>>({});
+
+  // Mobile-specific state
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobilePosition, setMobilePosition] = useState<MousePosition>({ x: 0, y: 0 });
+  const [targetMobilePosition, setTargetMobilePosition] = useState<MousePosition>({ x: 0, y: 0 });
+  const [mobileActiveZone, setMobileActiveZone] = useState<HoverZone>(null);
+  const [viewportCenter, setViewportCenter] = useState<MousePosition>({ x: 0, y: 0 });
+  const mobileAnimationRef = useRef<number | null>(null);
+  const isAnimatingToCenter = useRef(false);
+  const [touchHoveredElement, setTouchHoveredElement] = useState<HTMLElement | null>(null);
+
+  // Inactivity dimming state
+  const [isUIDimmed, setIsUIDimmed] = useState(true); // Start dimmed
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track if user has moved their mouse/touch yet (for initial page state)
+  const [hasUserMoved, setHasUserMoved] = useState(false);
+  const hasUserMovedRef = useRef(false);
+
+  // Edge label refs and hidden state
+  const edgeLabelRefs = useRef({
+    top: createRef<HTMLSpanElement>(),
+    left: createRef<HTMLSpanElement>(),
+    right: createRef<HTMLSpanElement>(),
+  });
+  const [hiddenEdgeLabels, setHiddenEdgeLabels] = useState<Set<string>>(new Set());
+  
+  // Use refs for touch state to avoid re-running effects on every touch change
+  const touchStartPosRef = useRef<MousePosition | null>(null);
+  const isDraggingRef = useRef(false);
+  const mobilePositionRef = useRef<MousePosition>({ x: 0, y: 0 });
+  const mobileActiveZoneRef = useRef<HoverZone>(null);
+  const viewportCenterRef = useRef<MousePosition>({ x: 0, y: 0 });
+  const placedBlocksRef = useRef<PlacedBlocks>({});
+
+  // Detect mobile and set initial center position
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768 || 'ontouchstart' in window;
+      setIsMobile(mobile);
+      const center = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+      setViewportCenter(center);
+      viewportCenterRef.current = center;
+      setTargetMobilePosition(center);
+      if (mobile) {
+        setMobilePosition(center);
+        mobilePositionRef.current = center;
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Reset inactivity timer - undim UI and start 2s countdown
+  const resetInactivityTimer = useCallback(() => {
+    setIsUIDimmed(false);
+
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+
+    inactivityTimerRef.current = setTimeout(() => {
+      setIsUIDimmed(true);
+    }, 2000);
+  }, []);
+
+  // Track actual user movement with event listeners to reset inactivity timer
+  useEffect(() => {
+    const handleMouseMove = () => {
+      // Mark that user has moved on first interaction
+      if (!hasUserMovedRef.current) {
+        hasUserMovedRef.current = true;
+        setHasUserMoved(true);
+      }
+      resetInactivityTimer();
+    };
+
+    const handleTouchMoveForTimer = () => {
+      // Mark that user has moved on first interaction
+      if (!hasUserMovedRef.current) {
+        hasUserMovedRef.current = true;
+        setHasUserMoved(true);
+      }
+      resetInactivityTimer();
+    };
+
+    // Add listeners for actual user movement
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleTouchMoveForTimer, { passive: true });
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMoveForTimer);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, [resetInactivityTimer]);
+
+  // Smooth animation for mobile cursor returning to center
+  const animateMobilePosition = useCallback((from: MousePosition, to: MousePosition, duration: number, onComplete?: () => void) => {
+    if (mobileAnimationRef.current) {
+      cancelAnimationFrame(mobileAnimationRef.current);
+    }
+
+    const startTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      const newX = from.x + (to.x - from.x) * eased;
+      const newY = from.y + (to.y - from.y) * eased;
+      const newPos = { x: newX, y: newY };
+
+      // Update both ref and state
+      mobilePositionRef.current = newPos;
+      setMobilePosition(newPos);
+
+      if (progress < 1) {
+        mobileAnimationRef.current = requestAnimationFrame(animate);
+      } else {
+        mobileAnimationRef.current = null;
+        if (onComplete) onComplete();
+      }
+    };
+
+    mobileAnimationRef.current = requestAnimationFrame(animate);
+  }, []);
+
+  // Check if a point is within any placed block's bounds
+  const isPointInPlacedBlock = useCallback((point: MousePosition): boolean => {
+    for (const zone of Object.keys(placedBlockRefs.current)) {
+      const ref = placedBlockRefs.current[zone];
+      if (ref?.current) {
+        const rect = ref.current.getBoundingClientRect();
+        if (
+          point.x >= rect.left &&
+          point.x <= rect.right &&
+          point.y >= rect.top &&
+          point.y <= rect.bottom
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, []);
+
+  // Find interactive element (link or button) at a given point in placed blocks
+  const getInteractiveElementAtPoint = useCallback((point: MousePosition): HTMLElement | null => {
+    // Check each placed block for interactive elements
+    for (const zone of Object.keys(placedBlocks)) {
+      const ref = placedBlockRefs.current[zone];
+      if (ref?.current) {
+        const links = ref.current.querySelectorAll('a, button');
+        for (const el of links) {
+          if (el instanceof HTMLElement) {
+            const rect = el.getBoundingClientRect();
+            // Skip elements with zero size
+            if (rect.width === 0 || rect.height === 0) continue;
+
+            // Check if point is within bounds with tolerance
+            const tolerance = 10;
+            if (
+              point.x >= rect.left - tolerance &&
+              point.x <= rect.right + tolerance &&
+              point.y >= rect.top - tolerance &&
+              point.y <= rect.bottom + tolerance
+            ) {
+              return el;
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }, [placedBlocks]);
+
+  // Update hover state for touch-hovered element
+  const updateTouchHoverState = useCallback((point: MousePosition) => {
+    const element = getInteractiveElementAtPoint(point);
+
+    if (element) {
+      setTouchHoveredElement(element);
+      // Trigger the dimming effect by setting hoveredLinkRect
+      const rect = element.getBoundingClientRect();
+      setHoveredLinkRect(rect);
+    } else {
+      setTouchHoveredElement(null);
+      setHoveredLinkRect(null);
+    }
+  }, [getInteractiveElementAtPoint]);
+
+  // Handle link click on mobile - move cursor to link then back to center
+  const handleMobileLinkClick = useCallback((linkRect: DOMRect) => {
+    if (!isMobile) return;
+
+    const linkCenter = {
+      x: linkRect.left + linkRect.width / 2,
+      y: linkRect.top + linkRect.height / 2,
+    };
+
+    // Cancel any ongoing animation
+    if (mobileAnimationRef.current) {
+      cancelAnimationFrame(mobileAnimationRef.current);
+    }
+
+    // Instantly move to link position
+    setMobilePosition(linkCenter);
+
+    // Then animate back to center after a brief pause
+    setTimeout(() => {
+      animateMobilePosition(linkCenter, viewportCenter, CURSOR_RETURN_DURATION);
+    }, 100);
+  }, [isMobile, viewportCenter, animateMobilePosition]);
+
+  // Activate the touch-hovered element (click it)
+  const activateTouchHoveredElement = useCallback((element: HTMLElement, point: MousePosition) => {
+    if (element.tagName === 'A') {
+      const link = element as HTMLAnchorElement;
+      const href = link.href;
+      if (href) {
+        // Trigger mobile link click animation
+        handleMobileLinkClick(element.getBoundingClientRect());
+        // Open the link
+        window.open(href, '_blank');
+      }
+    } else if (element.tagName === 'BUTTON') {
+      // For buttons (like email copy), trigger click
+      handleMobileLinkClick(element.getBoundingClientRect());
+      element.click();
+    }
+  }, [handleMobileLinkClick]);
+
+  // Use mobile position/zone when on mobile, otherwise use desktop
+  const currentPosition = isMobile ? mobilePosition : mousePosition;
+  let activeZone = isMobile ? mobileActiveZone : desktopActiveZone;
+
+  // On desktop, disable any zone until user first moves their mouse
+  if (!isMobile && !hasUserMoved) {
+    activeZone = null;
+  }
+
+  // Deadzone: if cursor is over a placed block, don't trigger any zone
+  const isOverPlacedBlock = useMemo(() => {
+    return isPointInPlacedBlock(currentPosition);
+  }, [currentPosition, isPointInPlacedBlock]);
+
+  if (isOverPlacedBlock) {
+    activeZone = null;
+  }
+
+  const handleLinkHover = (rect: DOMRect | null) => {
+    setHoveredLinkRect(rect);
+  };
+
+  const isLinkHovered = hoveredLinkRect !== null;
+
+  // Helper to determine if a specific edge/label should be dimmed
+  const shouldDimEdge = (position: 'top' | 'bottom' | 'left' | 'right'): boolean => {
+    // If hovering an edge that's not placed, dim the OTHER edges
+    if (showFloatingBlock && activeZone && activeZone !== position) {
+      return true;
+    }
+    // Otherwise, use normal dimming logic
+    return isUIDimmed || isLinkHovered;
+  };
+
+  // Helper for edge labels - doesn't dim on link hover
+  const shouldDimEdgeLabel = (position: 'top' | 'bottom' | 'left' | 'right'): boolean => {
+    // If hovering an edge that's not placed, dim the OTHER edges
+    if (showFloatingBlock && activeZone && activeZone !== position) {
+      return true;
+    }
+    // Otherwise, only use inactivity dimming (not link hover)
+    return isUIDimmed;
+  };
+
+  // Create or get ref for a placed block
+  const getPlacedBlockRef = (zone: string): React.RefObject<HTMLDivElement | null> => {
+    if (!placedBlockRefs.current[zone]) {
+      placedBlockRefs.current[zone] = createRef<HTMLDivElement>();
+    }
+    return placedBlockRefs.current[zone];
+  };
 
   const content = useMemo(() => {
     if (!activeZone) return null;
@@ -51,72 +347,309 @@ export function BorderFrame() {
 
   const isZonePlaced = useMemo(() => checkZonePlaced(activeZone, placedBlocks), [activeZone, placedBlocks]);
 
-  // Should show the floating text block (hovering a zone with content, zone not already placed)
+  // Should show the floating text block on hover (no click required), zone not already placed
   const showFloatingBlock = activeZone && content && !isZonePlaced;
 
+  // Helper to calculate adjusted position within viewport bounds
+  const calculateAdjustedPosition = useCallback((pos: MousePosition, rect: DOMRect | null): MousePosition => {
+    let adjustedPosition = { ...pos };
+    if (rect) {
+      const halfWidth = rect.width / 2;
+      const halfHeight = rect.height / 2;
+      const offset = 5;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      const left = pos.x - halfWidth;
+      const right = pos.x + halfWidth;
+      const top = pos.y - halfHeight;
+      const bottom = pos.y + halfHeight;
+
+      if (left < offset) {
+        adjustedPosition.x = halfWidth + offset;
+      } else if (right > viewportWidth - offset) {
+        adjustedPosition.x = viewportWidth - halfWidth - offset;
+      }
+
+      if (top < offset) {
+        adjustedPosition.y = halfHeight + offset;
+      } else if (bottom > viewportHeight - offset) {
+        adjustedPosition.y = viewportHeight - halfHeight - offset;
+      }
+    }
+    return adjustedPosition;
+  }, []);
+
+  // Helper to place a block
+  const placeBlock = useCallback((zone: HoverZone, blockContent: string, position: MousePosition, rect: DOMRect | null) => {
+    if (!zone || !blockContent) return;
+    const adjustedPosition = calculateAdjustedPosition(position, rect);
+    const newBlock = {
+      position: adjustedPosition,
+      content: blockContent,
+      zone,
+      placedAt: Date.now(),
+    };
+    // Clear all previous blocks and place only the new one
+    setPlacedBlocks(() => {
+      const updated = { [zone]: newBlock };
+      placedBlocksRef.current = updated;
+      return updated;
+    });
+    setJustPlacedZones((prev) => new Set(prev).add(zone));
+
+    // Dim UI after placing
+    setIsUIDimmed(true);
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+  }, [calculateAdjustedPosition]);
+
+  // Determine zone from drag direction (mobile)
+  const getZoneFromDrag = useCallback((startPos: MousePosition, currentPos: MousePosition): HoverZone => {
+    const deltaX = currentPos.x - startPos.x;
+    const deltaY = currentPos.y - startPos.y;
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+
+    // Need minimum movement to register a direction
+    if (absDeltaX < TAP_THRESHOLD && absDeltaY < TAP_THRESHOLD) {
+      return null;
+    }
+
+    // Determine primary direction
+    if (absDeltaY > absDeltaX) {
+      return deltaY < 0 ? 'top' : 'bottom';
+    } else {
+      return deltaX < 0 ? 'left' : 'right';
+    }
+  }, []);
+
+  // Determine zone from tap position (mobile) - for tapping edge areas
+  const getZoneFromTapPosition = useCallback((pos: MousePosition): HoverZone => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const edgeThreshold = 0.25; // 25% from edge
+
+    if (pos.y < vh * edgeThreshold) return 'top';
+    if (pos.y > vh * (1 - edgeThreshold)) return 'bottom';
+    if (pos.x < vw * edgeThreshold) return 'left';
+    if (pos.x > vw * (1 - edgeThreshold)) return 'right';
+    return null; // Center deadzone
+  }, []);
+
+  // Helper function to get content for a zone - moved before useEffect
+  const getContentForZone = useCallback((zone: HoverZone): string | null => {
+    if (!zone) return null;
+    if (zone === 'top' || zone === 'bottom') return HOVER_CONTENT.topBottom;
+    if (zone === 'left') return HOVER_CONTENT.left;
+    if (zone === 'right') return HOVER_CONTENT.right;
+    return null;
+  }, []);
+
+  // Set up event handlers - use refs to avoid stale closures and re-running effects
   useEffect(() => {
+    // Desktop handlers
     const handleMouseDown = () => {
+      if (isMobile) return;
       setIsMouseDown(true);
     };
 
     const handleMouseUp = () => {
-      // Place the block if we're in a zone that doesn't have one yet
-      // Use the helper to check if content is already placed (top/bottom share content)
+      if (isMobile) return;
       if (activeZone && content && !checkZonePlaced(activeZone, placedBlocks)) {
-        setPlacedBlocks((prev) => ({
-          ...prev,
-          [activeZone]: {
-            position: { ...mousePosition },
-            content,
-            zone: activeZone,
-            placedAt: Date.now(),
-          },
-        }));
-        setJustPlacedZones((prev) => new Set(prev).add(activeZone));
+        placeBlock(activeZone, content, mousePosition, textBlockRect);
       }
       setIsMouseDown(false);
     };
 
-    const handleTouchStart = () => {
-      setIsMouseDown(true);
+    // Mobile handlers - use refs for touch state to avoid stale closures
+    const handleTouchStart = (e: TouchEvent) => {
+      if (!isMobile) {
+        setIsMouseDown(true);
+        return;
+      }
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        const startPos = { x: touch.clientX, y: touch.clientY };
+
+        // Undim UI on touch start
+        resetInactivityTimer();
+
+        // Cancel any ongoing animation
+        if (mobileAnimationRef.current) {
+          cancelAnimationFrame(mobileAnimationRef.current);
+          mobileAnimationRef.current = null;
+        }
+        isAnimatingToCenter.current = false;
+
+        // Clear any previous hover state
+        setTouchHoveredElement(null);
+        setHoveredLinkRect(null);
+
+        // Check if touch started in a placed block - if so, mark as started in block
+        if (isPointInPlacedBlock(startPos)) {
+          touchStartPosRef.current = null; // Mark as not a drag candidate
+          return;
+        }
+
+        touchStartPosRef.current = startPos;
+        isDraggingRef.current = false;
+      }
     };
 
-    const handleTouchEnd = () => {
-      if (activeZone && content && !checkZonePlaced(activeZone, placedBlocks)) {
-        setPlacedBlocks((prev) => ({
-          ...prev,
-          [activeZone]: {
-            position: { ...mousePosition },
-            content,
-            zone: activeZone,
-            placedAt: Date.now(),
-          },
-        }));
-        setJustPlacedZones((prev) => new Set(prev).add(activeZone));
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isMobile) return;
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        const currentPos = { x: touch.clientX, y: touch.clientY };
+
+        // If no touchStartPos, we started on a placed block - ignore movement
+        if (!touchStartPosRef.current) {
+          return;
+        }
+
+        const deltaX = currentPos.x - touchStartPosRef.current.x;
+        const deltaY = currentPos.y - touchStartPosRef.current.y;
+        const absDeltaX = Math.abs(deltaX);
+        const absDeltaY = Math.abs(deltaY);
+
+        if (absDeltaX > TAP_THRESHOLD || absDeltaY > TAP_THRESHOLD) {
+          isDraggingRef.current = true;
+
+          // Keep UI undimmed while dragging
+          resetInactivityTimer();
+
+          // Determine zone based on drag direction
+          const zone = getZoneFromDrag(touchStartPosRef.current, currentPos);
+          mobileActiveZoneRef.current = zone;
+          setMobileActiveZone(zone);
+
+          // Calculate target based on drag distance from center
+          const sensitivity = 1.2;
+          const targetX = viewportCenterRef.current.x + deltaX * sensitivity;
+          const targetY = viewportCenterRef.current.y + deltaY * sensitivity;
+
+          // Clamp to viewport bounds with small padding
+          const padding = 20;
+          const clampedX = Math.max(padding, Math.min(window.innerWidth - padding, targetX));
+          const clampedY = Math.max(padding, Math.min(window.innerHeight - padding, targetY));
+
+          // Calculate new mobile position with smooth interpolation
+          const currentMobilePos = mobilePositionRef.current;
+          const newMobileX = currentMobilePos.x + (clampedX - currentMobilePos.x) * 0.4;
+          const newMobileY = currentMobilePos.y + (clampedY - currentMobilePos.y) * 0.4;
+          const newMobilePos = { x: newMobileX, y: newMobileY };
+
+          // Update mobile position (both ref and state)
+          mobilePositionRef.current = newMobilePos;
+          setMobilePosition(newMobilePos);
+        }
       }
-      setIsMouseDown(false);
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!isMobile) {
+        // Desktop touch behavior
+        if (activeZone && content && !checkZonePlaced(activeZone, placedBlocks)) {
+          placeBlock(activeZone, content, mousePosition, textBlockRect);
+        }
+        setIsMouseDown(false);
+        return;
+      }
+
+      const touch = e.changedTouches[0];
+      const endPos = { x: touch.clientX, y: touch.clientY };
+
+      // Get current mobile position (center crosshair)
+      const currentMobilePos = mobilePositionRef.current;
+
+      // Clear hover state
+      setTouchHoveredElement(null);
+      setHoveredLinkRect(null);
+
+      // If touchStartPos is null, this was a touch that started on a placed block
+      if (!touchStartPosRef.current) {
+        return;
+      }
+
+      if (isDraggingRef.current) {
+        // Was a drag - place content if zone is active and not already placed
+        const currentZone = mobileActiveZoneRef.current;
+        if (currentZone && !checkZonePlaced(currentZone, placedBlocksRef.current)) {
+          const zoneContent = getContentForZone(currentZone);
+          if (zoneContent) {
+            placeBlock(currentZone, zoneContent, currentMobilePos, textBlockRect);
+          }
+        }
+        // Smoothly animate crosshair back to center
+        isAnimatingToCenter.current = true;
+        animateMobilePosition(currentMobilePos, viewportCenterRef.current, CURSOR_RETURN_DURATION, () => {
+          isAnimatingToCenter.current = false;
+        });
+        mobileActiveZoneRef.current = null;
+        setMobileActiveZone(null);
+      } else {
+        // Was a tap - check if tapping edge area
+        const tapZone = getZoneFromTapPosition(endPos);
+
+        if (tapZone && !checkZonePlaced(tapZone, placedBlocksRef.current)) {
+          // Tap on edge area - show and place content
+          const zoneContent = getContentForZone(tapZone);
+          if (zoneContent) {
+            // Instantly move to tap position
+            mobilePositionRef.current = endPos;
+            setMobilePosition(endPos);
+            mobileActiveZoneRef.current = tapZone;
+            setMobileActiveZone(tapZone);
+            // Brief delay to allow React to render the dimming effect before placing
+            setTimeout(() => {
+              placeBlock(tapZone, zoneContent, endPos, textBlockRect);
+              // Smoothly return to center after placing
+              setTimeout(() => {
+                animateMobilePosition(endPos, viewportCenterRef.current, CURSOR_RETURN_DURATION, () => {
+                  mobileActiveZoneRef.current = null;
+                  setMobileActiveZone(null);
+                });
+              }, 50);
+            }, 100);
+          }
+        }
+      }
+
+      // Reset touch state
+      touchStartPosRef.current = null;
+      isDraggingRef.current = false;
     };
 
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove);
     window.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [activeZone, content, mousePosition, placedBlocks]);
+  }, [isMobile, activeZone, content, mousePosition, placedBlocks, textBlockRect, placeBlock, getZoneFromDrag, getZoneFromTapPosition, getContentForZone, animateMobilePosition, isPointInPlacedBlock, updateTouchHoverState, getInteractiveElementAtPoint, activateTouchHoveredElement, resetInactivityTimer]);
 
   useEffect(() => {
     if (textBlockRef.current && showFloatingBlock) {
-      setTextBlockRect(textBlockRef.current.getBoundingClientRect());
+      // Use requestAnimationFrame to ensure the DOM has updated before measuring
+      const measureId = requestAnimationFrame(() => {
+        if (textBlockRef.current) {
+          setTextBlockRect(textBlockRef.current.getBoundingClientRect());
+        }
+      });
+      return () => cancelAnimationFrame(measureId);
     } else {
       setTextBlockRect(null);
     }
-  }, [mousePosition, showFloatingBlock]);
+  }, [currentPosition, showFloatingBlock, content]);
 
   // Clear "just placed" state after a delay to allow interactions
   useEffect(() => {
@@ -128,6 +661,136 @@ export function BorderFrame() {
     }
   }, [justPlacedZones]);
 
+  // Hide the default cursor globally
+  useEffect(() => {
+    document.body.style.cursor = 'none';
+    document.documentElement.style.cursor = 'none';
+
+    // Add style to hide cursor on all elements
+    const style = document.createElement('style');
+    style.id = 'hide-cursor-style';
+    style.textContent = '* { cursor: none !important; }';
+    document.head.appendChild(style);
+
+    return () => {
+      document.body.style.cursor = '';
+      document.documentElement.style.cursor = '';
+      const existingStyle = document.getElementById('hide-cursor-style');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    };
+  }, []);
+
+  // Dynamically adjust placed block positions based on their actual rendered size
+  useEffect(() => {
+    if (justPlacedZones.size === 0) return;
+
+    const adjustPlacedBlockPositions = () => {
+      const offset = 5;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      setPlacedBlocks((prev) => {
+        const updated = { ...prev };
+        let hasChanges = false;
+
+        justPlacedZones.forEach((zone) => {
+          const block = prev[zone as 'top' | 'bottom' | 'left' | 'right'];
+          if (!block) return;
+
+          const ref = placedBlockRefs.current[zone];
+          if (ref?.current) {
+            const rect = ref.current.getBoundingClientRect();
+            const halfWidth = rect.width / 2;
+            const halfHeight = rect.height / 2;
+
+            let newPosition = { ...block.position };
+
+            // Calculate bounds
+            const left = block.position.x - halfWidth;
+            const right = block.position.x + halfWidth;
+            const top = block.position.y - halfHeight;
+            const bottom = block.position.y + halfHeight;
+
+            // Adjust if outside viewport
+            if (left < offset) {
+              newPosition.x = halfWidth + offset;
+              hasChanges = true;
+            } else if (right > viewportWidth - offset) {
+              newPosition.x = viewportWidth - halfWidth - offset;
+              hasChanges = true;
+            }
+
+            if (top < offset) {
+              newPosition.y = halfHeight + offset;
+              hasChanges = true;
+            } else if (bottom > viewportHeight - offset) {
+              newPosition.y = viewportHeight - halfHeight - offset;
+              hasChanges = true;
+            }
+
+            if (hasChanges) {
+              updated[zone as 'top' | 'bottom' | 'left' | 'right'] = {
+                ...block,
+                position: newPosition,
+              };
+            }
+          }
+        });
+
+        return hasChanges ? updated : prev;
+      });
+    };
+
+    // Run adjustment after render
+    const timeoutId = setTimeout(adjustPlacedBlockPositions, 50);
+
+    return () => clearTimeout(timeoutId);
+  }, [justPlacedZones]);
+
+  // Check for overlaps between placed blocks and edge labels
+  useEffect(() => {
+    const checkOverlaps = () => {
+      const newHiddenLabels = new Set<string>();
+
+      // Check each placed block against each edge label
+      Object.entries(placedBlocks).forEach(([zone, block]) => {
+        const blockRef = placedBlockRefs.current[zone];
+        if (!blockRef?.current) return;
+
+        const blockRect = blockRef.current.getBoundingClientRect();
+
+        // Check against each edge label
+        (['top', 'left', 'right'] as const).forEach((labelPosition) => {
+          const labelRef = edgeLabelRefs.current[labelPosition];
+          if (!labelRef?.current) return;
+
+          const labelRect = labelRef.current.getBoundingClientRect();
+
+          // Check if rectangles overlap
+          const overlaps = !(
+            blockRect.right < labelRect.left ||
+            blockRect.left > labelRect.right ||
+            blockRect.bottom < labelRect.top ||
+            blockRect.top > labelRect.bottom
+          );
+
+          if (overlaps) {
+            newHiddenLabels.add(labelPosition);
+          }
+        });
+      });
+
+      setHiddenEdgeLabels(newHiddenLabels);
+    };
+
+    // Run check after blocks are rendered
+    const timeoutId = setTimeout(checkOverlaps, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [placedBlocks]);
+
   return (
     <div
       className="fixed inset-0 pointer-events-none"
@@ -138,44 +801,65 @@ export function BorderFrame() {
       }}
     >
       {/* Border edges */}
-      <BorderEdge position="top" isActive={activeZone === 'top'} />
-      <BorderEdge position="bottom" isActive={activeZone === 'bottom'} />
-      <BorderEdge position="left" isActive={activeZone === 'left'} />
-      <BorderEdge position="right" isActive={activeZone === 'right'} />
+      <BorderEdge position="top" isActive={activeZone === 'top'} isPlaced={!!placedBlocks.top || !!placedBlocks.bottom} isDimmed={shouldDimEdge('top')} />
+      <BorderEdge position="bottom" isActive={activeZone === 'bottom'} isPlaced={!!placedBlocks.top || !!placedBlocks.bottom} isDimmed={shouldDimEdge('bottom')} />
+      <BorderEdge position="left" isActive={activeZone === 'left'} isPlaced={!!placedBlocks.left} isDimmed={shouldDimEdge('left')} />
+      <BorderEdge position="right" isActive={activeZone === 'right'} isPlaced={!!placedBlocks.right} isDimmed={shouldDimEdge('right')} />
 
       {/* Edge labels */}
-      <EdgeLabel position="top" />
-      <EdgeLabel position="left" />
-      <EdgeLabel position="right" />
+      <EdgeLabel
+        ref={edgeLabelRefs.current.top}
+        position="top"
+        isDimmed={shouldDimEdgeLabel('top')}
+        isHidden={hiddenEdgeLabels.has('top')}
+      />
+      <EdgeLabel
+        ref={edgeLabelRefs.current.left}
+        position="left"
+        isDimmed={shouldDimEdgeLabel('left')}
+        isHidden={hiddenEdgeLabels.has('left')}
+      />
+      <EdgeLabel
+        ref={edgeLabelRefs.current.right}
+        position="right"
+        isDimmed={shouldDimEdgeLabel('right')}
+        isHidden={hiddenEdgeLabels.has('right')}
+      />
 
       {/* Placed text blocks - permanently visible after release */}
       {Object.values(placedBlocks).map((block) => (
         <HoverTextBlock
           key={block.zone}
+          ref={getPlacedBlockRef(block.zone)}
           position={block.position}
           content={block.content}
           zone={block.zone}
           isJustPlaced={justPlacedZones.has(block.zone)}
           isDragging={false}
+          onLinkHover={handleLinkHover}
+          onMobileLinkClick={handleMobileLinkClick}
+          touchHoveredElement={touchHoveredElement}
+          isDimmed={false}
         />
       ))}
 
-      {/* Cursor-following text block - shown on hover, zone not already placed */}
-      {showFloatingBlock && (
+      {/* Cursor-following text block - shows on hover, click to place */}
+      {showFloatingBlock && activeZone && (
         <HoverTextBlock
           ref={textBlockRef}
-          position={mousePosition}
+          position={currentPosition}
           content={content}
           zone={activeZone}
-          isDragging={isMouseDown}
+          isDragging={true}
         />
       )}
 
-      {/* Corner lines - draw to text block if zone not placed, or to cursor if placed */}
+      {/* Corner lines - always track cursor */}
       <CornerLines
         textBlockRect={textBlockRect}
-        cursorPoint={isZonePlaced ? mousePosition : null}
-        isVisible={!!activeZone}
+        cursorPoint={currentPosition}
+        isVisible={true}
+        isDimmed={isUIDimmed || isLinkHovered}
       />
     </div>
   );

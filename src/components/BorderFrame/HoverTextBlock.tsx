@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, ReactNode, useState, useEffect } from 'react';
+import { forwardRef, ReactNode, useState, useEffect, useRef } from 'react';
 import type { MousePosition } from '@/hooks/useMousePosition';
 
 interface HoverTextBlockProps {
@@ -9,6 +9,10 @@ interface HoverTextBlockProps {
   zone: 'top' | 'bottom' | 'left' | 'right';
   isJustPlaced?: boolean;
   isDragging?: boolean;
+  onLinkHover?: (rect: DOMRect | null) => void;
+  onMobileLinkClick?: (rect: DOMRect) => void;
+  touchHoveredElement?: HTMLElement | null;
+  isDimmed?: boolean;
 }
 
 interface TextSegment {
@@ -53,116 +57,269 @@ function parseContent(text: string): TextSegment[] {
   return segments.length > 0 ? segments : [{ type: 'text', content: text }];
 }
 
-function renderSegment(
-  segment: TextSegment,
-  idx: number,
-  isJustPlaced: boolean,
-  isDragging: boolean,
-  onEmailCopied?: () => void,
-  copiedIdx?: number
-): ReactNode {
-  const handleCopyEmail = (e: React.MouseEvent) => {
-    if (isJustPlaced) return;
-    e.preventDefault();
-    e.stopPropagation();
-    navigator.clipboard.writeText(segment.content);
-    onEmailCopied?.();
-  };
+interface RenderSegmentProps {
+  segment: TextSegment;
+  idx: number;
+  isJustPlaced: boolean;
+  isDragging: boolean;
+  onEmailCopied?: () => void;
+  copiedIdx?: number;
+  onLinkHover?: (rect: DOMRect | null) => void;
+  onMobileLinkClick?: (rect: DOMRect) => void;
+  touchHoveredElement?: HTMLElement | null;
+}
+
+function LinkSegment({ segment, idx, isJustPlaced, isDragging, onLinkHover, onMobileLinkClick, touchHoveredElement }: RenderSegmentProps) {
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  
+  // Check if this element is the one being touch-hovered
+  const isTouchHovered = touchHoveredElement !== null && touchHoveredElement === linkRef.current;
 
   const handleLinkClick = (e: React.MouseEvent) => {
     if (isJustPlaced) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Trigger mobile cursor movement if callback provided
+    if (linkRef.current && onMobileLinkClick) {
+      onMobileLinkClick(linkRef.current.getBoundingClientRect());
+    }
+
     if (segment.url) {
       window.open(segment.url, '_blank');
     }
   };
 
-  const handleCallClick = (e: React.MouseEvent) => {
-    if (isJustPlaced) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (segment.url) {
-      window.location.href = segment.url;
+  const handleMouseEnter = () => {
+    if (linkRef.current && onLinkHover) {
+      onLinkHover(linkRef.current.getBoundingClientRect());
     }
   };
 
+  const handleMouseLeave = () => {
+    if (onLinkHover) {
+      onLinkHover(null);
+    }
+  };
+
+  return (
+    <a
+      ref={linkRef}
+      key={idx}
+      href={segment.url}
+      onClick={handleLinkClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={`${!isDragging ? 'hover:opacity-70' : ''} transition-opacity ${
+        isJustPlaced || isDragging ? 'pointer-events-none' : 'cursor-pointer'
+      }`}
+      style={{
+        pointerEvents: isJustPlaced || isDragging ? 'none' : 'auto',
+        textDecoration: !isDragging ? 'underline' : 'none',
+        opacity: isTouchHovered ? 0.7 : undefined,
+      }}
+    >
+      {segment.content}
+    </a>
+  );
+}
+
+function CallSegment({ segment, idx, isJustPlaced, isDragging, onLinkHover, onMobileLinkClick, touchHoveredElement }: RenderSegmentProps) {
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  
+  // Check if this element is the one being touch-hovered
+  const isTouchHovered = touchHoveredElement !== null && touchHoveredElement === linkRef.current;
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (isJustPlaced) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Trigger mobile cursor movement if callback provided
+    if (linkRef.current && onMobileLinkClick) {
+      onMobileLinkClick(linkRef.current.getBoundingClientRect());
+    }
+
+    if (segment.url) {
+      window.open(segment.url, '_blank');
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (linkRef.current && onLinkHover) {
+      onLinkHover(linkRef.current.getBoundingClientRect());
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (onLinkHover) {
+      onLinkHover(null);
+    }
+  };
+
+  return (
+    <a
+      ref={linkRef}
+      key={idx}
+      href={segment.url}
+      onClick={handleLinkClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={`${!isDragging ? 'hover:opacity-70' : ''} transition-opacity ${
+        isJustPlaced || isDragging ? 'pointer-events-none' : 'cursor-pointer'
+      }`}
+      style={{
+        pointerEvents: isJustPlaced || isDragging ? 'none' : 'auto',
+        opacity: isTouchHovered ? 0.7 : undefined,
+      }}
+    >
+      {segment.content}
+    </a>
+  );
+}
+
+function EmailSegment({ segment, idx, isJustPlaced, isDragging, onEmailCopied, copiedIdx, onLinkHover, onMobileLinkClick, touchHoveredElement }: RenderSegmentProps) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  
+  // Check if this element is the one being touch-hovered
+  const isTouchHovered = touchHoveredElement !== null && touchHoveredElement === buttonRef.current;
+
+  const handleCopyEmail = (e: React.MouseEvent) => {
+    if (isJustPlaced) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Trigger mobile cursor movement if callback provided
+    if (buttonRef.current && onMobileLinkClick) {
+      onMobileLinkClick(buttonRef.current.getBoundingClientRect());
+    }
+
+    navigator.clipboard.writeText(segment.content);
+    onEmailCopied?.();
+  };
+
+  const handleMouseEnter = () => {
+    if (buttonRef.current && onLinkHover) {
+      onLinkHover(buttonRef.current.getBoundingClientRect());
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (onLinkHover) {
+      onLinkHover(null);
+    }
+  };
+
+  return (
+    <span key={idx} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        ref={buttonRef}
+        onClick={handleCopyEmail}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`${!isDragging ? 'hover:opacity-70' : ''} ${
+          isJustPlaced || isDragging ? 'pointer-events-none' : 'cursor-pointer'
+        }`}
+        style={{
+          pointerEvents: isJustPlaced || isDragging ? 'none' : 'auto',
+          font: 'inherit',
+          color: 'inherit',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          opacity: isTouchHovered ? 0.7 : undefined,
+        }}
+      >
+        {segment.content}
+      </button>
+      {copiedIdx === idx && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: '0.65rem',
+            opacity: 0.7,
+            whiteSpace: 'nowrap',
+            marginTop: '2px',
+          }}
+        >
+          COPIED
+        </div>
+      )}
+    </span>
+  );
+}
+
+function renderSegment(props: RenderSegmentProps): ReactNode {
+  const { segment, idx } = props;
+
   switch (segment.type) {
     case 'link':
-      return (
-        <a
-          key={idx}
-          href={segment.url}
-          onClick={handleLinkClick}
-          className={`${!isDragging ? 'hover:opacity-70' : ''} transition-opacity ${
-            isJustPlaced || isDragging ? 'pointer-events-none' : 'cursor-pointer'
-          }`}
-          style={{ pointerEvents: isJustPlaced || isDragging ? 'none' : 'auto' }}
-        >
-          {segment.content}
-        </a>
-      );
-
+      return <LinkSegment key={idx} {...props} />;
     case 'call':
-      return (
-        <a
-          key={idx}
-          href={segment.url}
-          onClick={handleCallClick}
-          className={`${!isDragging ? 'hover:opacity-70' : ''} transition-opacity ${
-            isJustPlaced || isDragging ? 'pointer-events-none' : 'cursor-pointer'
-          }`}
-          style={{ pointerEvents: isJustPlaced || isDragging ? 'none' : 'auto' }}
-        >
-          {segment.content}
-        </a>
-      );
-
+      return <CallSegment key={idx} {...props} />;
     case 'email':
-      return (
-        <span key={idx} style={{ position: 'relative', display: 'inline-block' }}>
-          <button
-            onClick={handleCopyEmail}
-            className={`${!isDragging ? 'hover:opacity-70' : ''} ${
-              isJustPlaced || isDragging ? 'pointer-events-none' : 'cursor-pointer'
-            }`}
-            style={{
-              pointerEvents: isJustPlaced || isDragging ? 'none' : 'auto',
-              font: 'inherit',
-              color: 'inherit',
-              background: 'none',
-              border: 'none',
-              padding: 0,
-            }}
-          >
-            {segment.content}
-          </button>
-          {copiedIdx === idx && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                fontSize: '0.65rem',
-                opacity: 0.7,
-                whiteSpace: 'nowrap',
-                marginTop: '2px',
-              }}
-            >
-              COPIED
-            </div>
-          )}
-        </span>
-      );
-
+      return <EmailSegment key={idx} {...props} />;
     default:
       return <span key={idx}>{segment.content}</span>;
   }
 }
 
+interface ResourceLinkProps {
+  href: string;
+  children: React.ReactNode;
+  onLinkHover?: (rect: DOMRect | null) => void;
+  onMobileLinkClick?: (rect: DOMRect) => void;
+  touchHoveredElement?: HTMLElement | null;
+}
+
+function ResourceLink({ href, children, onLinkHover, onMobileLinkClick, touchHoveredElement }: ResourceLinkProps) {
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  
+  // Check if this element is the one being touch-hovered
+  const isTouchHovered = touchHoveredElement !== null && touchHoveredElement === linkRef.current;
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Trigger mobile cursor movement if callback provided
+    if (linkRef.current && onMobileLinkClick) {
+      onMobileLinkClick(linkRef.current.getBoundingClientRect());
+    }
+    // Don't prevent default - let the link open normally
+  };
+
+  const handleMouseEnter = () => {
+    if (linkRef.current && onLinkHover) {
+      onLinkHover(linkRef.current.getBoundingClientRect());
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (onLinkHover) {
+      onLinkHover(null);
+    }
+  };
+
+  return (
+    <a
+      ref={linkRef}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ textDecoration: 'underline', opacity: isTouchHovered ? 0.7 : undefined }}
+      className="hover:opacity-70 transition-opacity"
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {children}
+    </a>
+  );
+}
+
 export const HoverTextBlock = forwardRef<HTMLDivElement, HoverTextBlockProps>(
-  function HoverTextBlock({ position, content, zone, isJustPlaced = false, isDragging = false }, ref) {
+  function HoverTextBlock({ position, content, zone, isJustPlaced = false, isDragging = false, onLinkHover, onMobileLinkClick, touchHoveredElement, isDimmed = false }, ref) {
     const isHorizontalZone = zone === 'top' || zone === 'bottom';
     const segments = parseContent(content);
     const [copiedIdx, setCopiedIdx] = useState<number | undefined>(undefined);
@@ -192,18 +349,20 @@ export const HoverTextBlock = forwardRef<HTMLDivElement, HoverTextBlockProps>(
       }
     };
 
+    // Set consistent block widths for corner line snapping
+    // Horizontal zones (top/bottom) have longer text, vertical zones (left/right) should fit content
     const blockWidth = isHorizontalZone ? (isMobile ? 215 : 215) : undefined;
 
     return (
       <div
         ref={ref}
-        className="fixed text-foreground"
+        className="fixed text-foreground transition-opacity duration-300 ease-out"
         style={{
           left: position.x,
           top: position.y,
           transform: 'translate(-50%, -50%)',
           zIndex: 45,
-          pointerEvents: isJustPlaced ? 'none' : 'auto',
+          pointerEvents: isJustPlaced || isDragging ? 'none' : 'auto',
           userSelect: isDragging ? 'none' : 'auto',
           WebkitUserSelect: isDragging ? 'none' : 'auto',
           whiteSpace: isHorizontalZone ? 'normal' : 'nowrap',
@@ -211,11 +370,48 @@ export const HoverTextBlock = forwardRef<HTMLDivElement, HoverTextBlockProps>(
           width: blockWidth,
           minWidth: blockWidth,
           maxWidth: blockWidth,
+          textAlign: isHorizontalZone ? 'left' : 'center',
           boxSizing: 'border-box',
+          opacity: isDimmed ? 0.5 : 1,
         }}
       >
         {segments.map((segment, idx) =>
-          renderSegment(segment, idx, isJustPlaced, isDragging, handleEmailCopied, copiedIdx)
+          renderSegment({
+            segment,
+            idx,
+            isJustPlaced,
+            isDragging,
+            onEmailCopied: handleEmailCopied,
+            copiedIdx,
+            onLinkHover,
+            onMobileLinkClick,
+            touchHoveredElement,
+          })
+        )}
+        {/* Resources section - hidden for now */}
+        {false && !isDragging && isHorizontalZone && (
+          <div
+            style={{
+              display: 'flex',
+              gap: '1.5rem',
+              marginTop: '0.75rem',
+            }}
+          >
+            <div>Resources:</div>
+            <div
+              style={{
+                display: 'flex',
+                gap: '1rem',
+              }}
+            >
+              <ResourceLink href="http://are.na/final-research/channels" onLinkHover={onLinkHover} onMobileLinkClick={onMobileLinkClick} touchHoveredElement={touchHoveredElement}>
+                Are.na
+              </ResourceLink>
+              <ResourceLink href="https://instagram.com/final.research" onLinkHover={onLinkHover} onMobileLinkClick={onMobileLinkClick} touchHoveredElement={touchHoveredElement}>
+                Instagram
+              </ResourceLink>
+            </div>
+          </div>
         )}
       </div>
     );

@@ -1,15 +1,41 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
-interface CornerLinesProps {
-  textBlockRect: DOMRect | null;
-  cursorPoint: { x: number; y: number } | null;
-  isVisible: boolean;
+interface Point {
+  x: number;
+  y: number;
 }
 
-export function CornerLines({ textBlockRect, cursorPoint, isVisible }: CornerLinesProps) {
+interface CornerLinesProps {
+  textBlockRect?: DOMRect | null;
+  cursorPoint: Point | null;
+  isVisible: boolean;
+  isDimmed?: boolean;
+}
+
+const ANIMATION_DURATION = 150;
+
+function lerp(start: number, end: number, t: number): number {
+  return start + (end - start) * t;
+}
+
+function easeOut(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+export function CornerLines({ textBlockRect, cursorPoint, isVisible, isDimmed = false }: CornerLinesProps) {
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
+
+  // Animated half-dimensions (from center to edge)
+  const [animatedHalfWidth, setAnimatedHalfWidth] = useState(0);
+  const [animatedHalfHeight, setAnimatedHalfHeight] = useState(0);
+
+  const animationRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const startDimsRef = useRef({ halfWidth: 0, halfHeight: 0 });
+  const targetDimsRef = useRef({ halfWidth: 0, halfHeight: 0 });
+  const currentDimsRef = useRef({ halfWidth: 0, halfHeight: 0 });
 
   useEffect(() => {
     const updateViewport = () => {
@@ -24,8 +50,77 @@ export function CornerLines({ textBlockRect, cursorPoint, isVisible }: CornerLin
     return () => window.removeEventListener('resize', updateViewport);
   }, []);
 
+  // Animate dimensions when text block size changes
+  useEffect(() => {
+    let targetHalfWidth = 0;
+    let targetHalfHeight = 0;
+
+    if (textBlockRect) {
+      targetHalfWidth = textBlockRect.width / 2;
+      targetHalfHeight = textBlockRect.height / 2;
+    }
+
+    // Check if dimensions actually changed
+    const hasChanged =
+      Math.abs(targetHalfWidth - targetDimsRef.current.halfWidth) > 1 ||
+      Math.abs(targetHalfHeight - targetDimsRef.current.halfHeight) > 1;
+
+    if (hasChanged) {
+      // Store current dimensions as start
+      startDimsRef.current = { ...currentDimsRef.current };
+      targetDimsRef.current = { halfWidth: targetHalfWidth, halfHeight: targetHalfHeight };
+      startTimeRef.current = null;
+
+      // Cancel existing animation
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+
+      // Animation loop
+      const animate = (timestamp: number) => {
+        if (startTimeRef.current === null) {
+          startTimeRef.current = timestamp;
+        }
+
+        const elapsed = timestamp - startTimeRef.current;
+        const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
+        const easedProgress = easeOut(progress);
+
+        const newHalfWidth = lerp(
+          startDimsRef.current.halfWidth,
+          targetDimsRef.current.halfWidth,
+          easedProgress
+        );
+        const newHalfHeight = lerp(
+          startDimsRef.current.halfHeight,
+          targetDimsRef.current.halfHeight,
+          easedProgress
+        );
+
+        currentDimsRef.current = { halfWidth: newHalfWidth, halfHeight: newHalfHeight };
+        setAnimatedHalfWidth(newHalfWidth);
+        setAnimatedHalfHeight(newHalfHeight);
+
+        if (progress < 1) {
+          animationRef.current = requestAnimationFrame(animate);
+        } else {
+          animationRef.current = null;
+          startTimeRef.current = null;
+        }
+      };
+
+      animationRef.current = requestAnimationFrame(animate);
+    }
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [textBlockRect?.width, textBlockRect?.height]);
+
   if (!isVisible || viewport.width === 0) return null;
-  if (!textBlockRect && !cursorPoint) return null;
+  if (!cursorPoint) return null;
 
   const screenCorners = [
     { x: 0, y: 0 },
@@ -34,15 +129,13 @@ export function CornerLines({ textBlockRect, cursorPoint, isVisible }: CornerLin
     { x: viewport.width, y: viewport.height },
   ];
 
-  // If we have a text block rect, use its corners; otherwise use cursor point for all corners
-  const blockCorners = textBlockRect
-    ? [
-        { x: textBlockRect.left, y: textBlockRect.top },
-        { x: textBlockRect.right, y: textBlockRect.top },
-        { x: textBlockRect.left, y: textBlockRect.bottom },
-        { x: textBlockRect.right, y: textBlockRect.bottom },
-      ]
-    : [cursorPoint!, cursorPoint!, cursorPoint!, cursorPoint!];
+  // Calculate corners based on cursor position + animated dimensions
+  const blockCorners = [
+    { x: cursorPoint.x - animatedHalfWidth, y: cursorPoint.y - animatedHalfHeight }, // top-left
+    { x: cursorPoint.x + animatedHalfWidth, y: cursorPoint.y - animatedHalfHeight }, // top-right
+    { x: cursorPoint.x - animatedHalfWidth, y: cursorPoint.y + animatedHalfHeight }, // bottom-left
+    { x: cursorPoint.x + animatedHalfWidth, y: cursorPoint.y + animatedHalfHeight }, // bottom-right
+  ];
 
   return (
     <svg
@@ -63,6 +156,10 @@ export function CornerLines({ textBlockRect, cursorPoint, isVisible }: CornerLin
           y2={blockCorners[i].y}
           stroke="var(--foreground)"
           strokeWidth="1"
+          style={{
+            opacity: isDimmed ? 0.5 : 1,
+            transition: 'opacity 300ms ease-out',
+          }}
         />
       ))}
     </svg>
