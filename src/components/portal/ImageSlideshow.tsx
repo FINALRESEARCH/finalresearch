@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export type SlideshowImage = { src: string; alt: string; lqip?: string }
 
@@ -26,7 +26,18 @@ export function ImageSlideshow({
   // fires onLoad — the blur placeholder would sit there looking stuck forever.
   const [erroredSrcs, setErroredSrcs] = useState<Set<string>>(new Set())
   const touchStartX = useRef<number | null>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
   const count = slides.length
+
+  // A cached image can finish loading before React attaches the onLoad
+  // listener below — the event fires and is missed, so the placeholder
+  // would sit there forever. `complete` catches that already-done case.
+  useEffect(() => {
+    const el = imgRef.current
+    if (el?.complete && el.naturalWidth > 0) {
+      setLoadedSrcs((prev) => (prev.has(el.src) ? prev : new Set(prev).add(el.src)))
+    }
+  }, [index])
 
   if (count === 0) return null
 
@@ -62,6 +73,7 @@ export function ImageSlideshow({
         {/* Proxied bytes: Next's optimizer would need a public URL. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          ref={imgRef}
           src={current.src}
           alt={current.alt}
           style={isErrored ? { display: 'none' } : undefined}
@@ -88,7 +100,7 @@ export function ImageSlideshow({
           />
         )}
         {isErrored && (
-          <div className="fr-slideshow__error">Couldn't load this image</div>
+          <div className="fr-slideshow__error">Couldn&apos;t load this image</div>
         )}
         <button
           type="button"

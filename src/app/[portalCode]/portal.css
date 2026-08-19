@@ -165,13 +165,15 @@
   right: 0;
   z-index: 1;
   display: flex;
-  justify-content: center;
-  padding: 6px 16px;
   background: var(--background);
   border-top: 1px solid var(--foreground);
 }
 
 .fr-portal__footer-code {
+  display: block;
+  width: 100%;
+  padding: 6px 16px;
+  text-align: center;
   color: var(--foreground);
 }
 

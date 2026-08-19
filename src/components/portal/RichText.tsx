@@ -22,7 +22,7 @@ function components(portalCode: string): PortableTextComponents {
       image: ({ value }) => {
         const ref: string | undefined = value?.asset?._ref
         if (!ref) return null
-        const src = `/api/portal/${portalCode}/asset/${ref}?w=1600&auto=format`
+        const src = `/api/portal/${portalCode}/asset/${ref}?w=2400&auto=format`
         const widthPercent: number =
           typeof value?.widthPercent === 'number' ? value.widthPercent : 100
         return (
@@ -51,7 +51,7 @@ function components(portalCode: string): PortableTextComponents {
             const ref = slide.asset?.ref
             if (!ref) return null
             return {
-              src: `/api/portal/${portalCode}/asset/${ref}?w=1600&auto=format`,
+              src: `/api/portal/${portalCode}/asset/${ref}?w=2400&auto=format`,
               alt: slide.alt || '',
               lqip: slide.asset?.lqip,
             }
