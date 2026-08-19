@@ -125,6 +125,21 @@
   }
 }
 
+/* Forces exactly one screen for the opening video, centered below the fixed
+   header, regardless of how much content follows — 72px matches
+   .fr-portal__main's own top padding above (the header's clearance). Its
+   bottom padding (120px) is NOT subtracted here: that only reserves space
+   once, at the very end of the whole page for the footer, not at this
+   hero-to-next-block boundary — subtracting it left the next block visible
+   120px before the actual fold. */
+.fr-portal__hero {
+  align-self: stretch;
+  min-height: calc(100vh - 72px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 /* Each row is its own full-bleed bar with its own rule, stacked directly on
    top of one another — not one box with two lines inside it. */
 .fr-portal__header {
@@ -313,6 +328,78 @@
   height: auto;
 }
 
+.fr-slideshow__stage {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+/* Sits over the real image (which stays in normal flow and sets the stage's
+   height) so nav feels instant — the blurred stand-in is already decoded,
+   then fades out once the full image's onLoad fires. Scaled up so the
+   blurred edges (an artifact of the source thumbnail) sit outside the crop. */
+.fr-slideshow__placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(20px);
+  transform: scale(1.1);
+  transition: opacity 0.3s ease;
+}
+
+.fr-slideshow__placeholder--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The broken <img> collapses to nothing, so the stage needs its own box to
+   hold the error message instead of disappearing entirely. */
+.fr-slideshow__error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  color: var(--foreground);
+  opacity: 0.6;
+}
+
+/* Invisible halves over the image; the cursor is the only affordance that
+   the left/right side of the slide navigates. */
+.fr-slideshow__hitzone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.fr-slideshow__hitzone--prev {
+  left: 0;
+  cursor: w-resize;
+}
+
+.fr-slideshow__hitzone--next {
+  right: 0;
+  cursor: e-resize;
+}
+
+/* Video controls clump left because the scrubber's flex-grow does the
+   spreading; the slideshow has no such element, so it justifies the row
+   itself — PREV and NEXT pinned to the edges, counter in the middle. */
+.fr-slideshow__controls {
+  justify-content: space-between;
+  padding-top: 0;
+}
+
+.fr-player__button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 @media (max-width: 640px) {
   .fr-richtext h2,
   .fr-richtext h3,
@@ -329,6 +416,7 @@
 .fr-figure figcaption {
   margin-top: 8px;
   color: var(--foreground);
+  text-align: center;
 }
 
 /* --- scope table --- */

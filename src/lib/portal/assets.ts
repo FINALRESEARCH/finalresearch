@@ -2,7 +2,7 @@ import 'server-only'
 
 import { unstable_cache } from 'next/cache'
 
-import { sanityClient } from '@/sanity/lib/client'
+import { getClient } from '@/sanity/lib/client'
 import { dataset, projectId } from '@/sanity/env'
 
 /**
@@ -72,6 +72,7 @@ export function assetCdnUrl(parsed: ParsedAssetRef): string {
 async function checkAssetBelongsToPortal(
   portalCode: string,
   assetId: string,
+  preview: boolean,
 ): Promise<boolean> {
   const query = `count(*[
     _type == "portalPage"
@@ -79,7 +80,7 @@ async function checkAssetBelongsToPortal(
     && _id in *[_type == "clientPortal" && projectCode.current == $portalCode][0].pages[]._ref
   ])`
   try {
-    const count = await sanityClient.fetch<number>(query, {
+    const count = await getClient(preview).fetch<number>(query, {
       assetId,
       portalCode,
     })

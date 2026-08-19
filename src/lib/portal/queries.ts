@@ -64,6 +64,22 @@ const portalPageQuery = defineQuery(`
         "durationSeconds": video.asset->data.duration,
         "aspectRatio": video.asset->data.aspect_ratio,
         "thumbTime": video.asset->thumbTime
+      },
+      _type == "richText" => {
+        ...,
+        content[]{
+          ...,
+          _type == "imageSlideshow" => {
+            ...,
+            slides[]{
+              ...,
+              asset->{
+                "ref": _id,
+                "lqip": metadata.lqip
+              }
+            }
+          }
+        }
       }
     }
   }

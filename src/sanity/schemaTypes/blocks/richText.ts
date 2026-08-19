@@ -71,6 +71,56 @@ export const richText = defineType({
         }),
         defineArrayMember({
           type: 'object',
+          name: 'imageSlideshow',
+          title: 'Image slideshow',
+          description:
+            'A row of images the client swipes/clicks through — same frame as a single image, with prev/next controls.',
+          fields: [
+            defineField({
+              name: 'caption',
+              type: 'string',
+            }),
+            defineField({
+              name: 'widthPercent',
+              title: 'Width',
+              type: 'number',
+              initialValue: 100,
+              validation: (rule) => rule.min(10).max(100),
+              components: { input: WidthSliderInput },
+            }),
+            defineField({
+              name: 'slides',
+              title: 'Slides',
+              type: 'array',
+              of: [
+                defineArrayMember({
+                  type: 'image',
+                  options: { hotspot: true },
+                  fields: [
+                    defineField({
+                      name: 'alt',
+                      type: 'string',
+                      title: 'Alt text',
+                    }),
+                  ],
+                }),
+              ],
+              validation: (rule) => rule.min(2),
+            }),
+          ],
+          preview: {
+            select: { caption: 'caption', slides: 'slides' },
+            prepare({ caption, slides }) {
+              const count = Array.isArray(slides) ? slides.length : 0
+              return {
+                title: caption || 'Image slideshow',
+                subtitle: `${count} slide${count === 1 ? '' : 's'}`,
+              }
+            },
+          },
+        }),
+        defineArrayMember({
+          type: 'object',
           name: 'externalImage',
           title: 'External image (URL)',
           description:

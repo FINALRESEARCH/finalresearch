@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { cookies, draftMode } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { isPortalCode } from '@/lib/portal/queries'
@@ -6,6 +6,7 @@ import { cookieName, verifySession } from '@/lib/portal/session'
 import {
   assetBelongsToPortal,
   assetCdnUrl,
+  assetDocumentId,
   buildImageQuery,
   parseAssetRef,
 } from '@/lib/portal/assets'
@@ -23,14 +24,20 @@ export async function GET(
 
   if (!isPortalCode(code)) return new NextResponse(null, { status: 404 })
 
+  // Mirrors the page routes: a Studio-authenticated preview session bypasses
+  // the passcode gate here too, so drafts can be reviewed end-to-end.
+  const { isEnabled: preview } = await draftMode()
+
   const jar = await cookies()
-  const unlocked = await verifySession(jar.get(cookieName(code))?.value, code)
+  const unlocked =
+    preview ||
+    (await verifySession(jar.get(cookieName(code))?.value, code))
   if (!unlocked) return new NextResponse(null, { status: 404 })
 
   const parsed = parseAssetRef(decodeURIComponent(ref))
   if (!parsed) return new NextResponse(null, { status: 404 })
 
-  if (!(await assetBelongsToPortal(code, parsed.id))) {
+  if (!(await assetBelongsToPortal(code, assetDocumentId(parsed), preview))) {
     return new NextResponse(null, { status: 404 })
   }
 

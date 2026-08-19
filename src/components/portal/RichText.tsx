@@ -1,5 +1,7 @@
 import { PortableText, type PortableTextComponents } from '@portabletext/react'
 
+import { ImageSlideshow } from './ImageSlideshow'
+
 export type RichTextBlock = {
   _key: string
   content?: unknown[]
@@ -33,6 +35,40 @@ function components(portalCode: string): PortableTextComponents {
             <img src={src} alt={value?.alt || ''} loading="lazy" />
             {value?.caption && <figcaption>{value.caption}</figcaption>}
           </figure>
+        )
+      },
+      imageSlideshow: ({ value }) => {
+        type Slide = {
+          _key: string
+          // Dereferenced in the portal page query (queries.ts) specifically to
+          // pull the lqip blur placeholder — not the raw {_ref} shape.
+          asset?: { ref?: string; lqip?: string }
+          alt?: string
+        }
+        const slides: Slide[] = Array.isArray(value?.slides) ? value.slides : []
+        const images = slides
+          .map((slide) => {
+            const ref = slide.asset?.ref
+            if (!ref) return null
+            return {
+              src: `/api/portal/${portalCode}/asset/${ref}?w=1600&auto=format`,
+              alt: slide.alt || '',
+              lqip: slide.asset?.lqip,
+            }
+          })
+          .filter(
+            (slide): slide is { src: string; alt: string; lqip: string | undefined } =>
+              slide !== null,
+          )
+        if (images.length === 0) return null
+        const widthPercent: number =
+          typeof value?.widthPercent === 'number' ? value.widthPercent : 100
+        return (
+          <ImageSlideshow
+            slides={images}
+            caption={value?.caption}
+            widthPercent={widthPercent}
+          />
         )
       },
       externalImage: ({ value }) => {
