@@ -17,9 +17,16 @@ function secret(): Uint8Array {
  * proxy lives at /api/portal/<code>/asset/*, outside the /<code>/* page
  * path, so the cookie has to be set at the root or the browser simply never
  * sends it there.
+ *
+ * The `_v2` bump is deliberate, not decorative: cookies issued before the
+ * path fix above are scoped to /<code> and silently never reach the asset
+ * proxy, so old sessions would otherwise sit there "unlocked" but broken
+ * until they expired on their own (up to 7 days). Renaming the cookie makes
+ * every pre-fix session a miss, forcing one clean re-unlock instead of a
+ * slow bleed of "images won't load" reports.
  */
 export function cookieName(portalCode: string): string {
-  return `fr_portal_${portalCode}`
+  return `fr_portal_v2_${portalCode}`
 }
 
 export function cookiePath(): string {
